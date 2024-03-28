@@ -1,10 +1,11 @@
-import {
-    CollapsibleTitleNode, CollapsibleContentNode, CollapsibleContainerNode, EmojisPlugin, FloatingTextFormatToolbarPlugin,
-    KeywordsPlugin, LinkPlugin, TreeViewPlugin
-} from './PLUGIN';
+// import {
+//     CollapsibleTitleNode, CollapsibleContentNode, CollapsibleContainerNode, EmojisPlugin, FloatingTextFormatToolbarPlugin,
+//     KeywordsPlugin, LinkPlugin, TreeViewPlugin
+// } from './plugin';
+import { BlockWithAlignableContents } from '@lexical/react/LexicalBlockWithAlignableContents';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { AutoLinkNode, LinkNode } from '@lexical/link';
-import {TableCellNode, TableNode, TableRowNode} from '@lexical/table';
+import { $createTableCellNode, $createTableNode, $createTableRowNode, $isTableCellNode, $isTableNode, $isTableRowNode, TableCellHeaderStates, TableCellNode, TableNode, TableRowNode } from '@lexical/table';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
@@ -16,37 +17,414 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
-import {
-    $convertFromMarkdownString,
-    $convertToMarkdownString,
-    CHECK_LIST,
-    ELEMENT_TRANSFORMERS,
-    ElementTransformer,
-    TEXT_FORMAT_TRANSFORMERS,
-    TEXT_MATCH_TRANSFORMERS,
-    TextMatchTransformer,
-    Transformer,
-} from '@lexical/markdown';
-import {
-    ExcalidrawElement,
-    NonDeleted,
-  } from '@excalidraw/excalidraw/types/element/types';
-import {AppState, BinaryFiles, ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types/types';
-
-import {mergeRegister} from '@lexical/utils';
+import { LexicalNestedComposer } from '@lexical/react/LexicalNestedComposer';
+import { $convertFromMarkdownString, $convertToMarkdownString, CHECK_LIST, ELEMENT_TRANSFORMERS, ElementTransformer, TEXT_FORMAT_TRANSFORMERS, TEXT_MATCH_TRANSFORMERS, TextMatchTransformer, Transformer, } from '@lexical/markdown';
+import { ExcalidrawElement, NonDeleted } from '@excalidraw/excalidraw/types/element/types';
+import { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types/types';
+import { addClassNamesToElement, mergeRegister } from '@lexical/utils';
 import { $createHorizontalRuleNode, $isHorizontalRuleNode, HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
-import {SerializedDecoratorBlockNode, DecoratorBlockNode  } from '@lexical/react/LexicalDecoratorBlockNode';
+import { SerializedDecoratorBlockNode, DecoratorBlockNode } from '@lexical/react/LexicalDecoratorBlockNode';
 import katex from 'katex';
 import { Klass, LexicalNode, $createTextNode, $isParagraphNode, $isTextNode, Spread, SerializedLexicalNode, DOMConversionOutput, DecoratorNode, NodeKey, EditorConfig, DOMConversionMap, LexicalEditor, DOMExportOutput, $isNodeSelection, $getSelection, $getNodeByKey, CLICK_COMMAND, COMMAND_PRIORITY_LOW, KEY_DELETE_COMMAND, KEY_BACKSPACE_COMMAND, ElementFormatType, SerializedEditor, createEditor, $setSelection, BaseSelection, SELECTION_CHANGE_COMMAND, COMMAND_PRIORITY_HIGH, KEY_ESCAPE_COMMAND, $applyNodeReplacement, LexicalCommand, createCommand, $isRangeSelection, DRAGSTART_COMMAND, KEY_ENTER_COMMAND, SerializedTextNode, TextNode, SerializedElementNode, ElementNode } from 'lexical';
 import React, { Suspense, ReactPortal, useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { ErrorBoundary } from 'react-error-boundary';
+
+
 import { Modal, Button, ImageResizer, Placeholder, EquationEditor, KatexRenderer, TextInput, Select, DialogActions } from './LibLexical';
 import { useSharedHistoryContext, useSettings, useSharedAutocompleteContext } from './context';
 import emojiList from './emoji-list';
 import { useModal } from './hooks';
-import { joinClasses } from './utils';
+import { joinClasses, } from './utils';
+import { Excalidraw, exportToSvg } from '@excalidraw/excalidraw';
+import { useCollaborationContext } from '@lexical/react/LexicalCollaborationContext';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import { CollapsibleContainerNode } from './plugin/CollapsiblePlugin/CollapsibleContainerNode';
+import { CollapsibleContentNode } from './plugin/CollapsiblePlugin/CollapsibleContentNode';
+import { CollapsibleTitleNode } from './plugin/CollapsiblePlugin/CollapsibleTitleNode';
+import EmojisPlugin from './plugin/EmojisPlugin';
+import FloatingTextFormatToolbarPlugin from './plugin/FloatingTextFormatToolbarPlugin';
+import KeywordsPlugin from './plugin/KeywordsPlugin';
+import TreeViewPlugin from './plugin/TreeViewPlugin';
 
+// const PollComponent = React.lazy(() => import('./PollComponent'));
+// const ImageComponent = React.lazy(() => import('./ImageComponent'));
+// const EquationComponent = React.lazy(() => import('./EquationComponent'));
+// const StickyComponent = React.lazy(() => import('./StickyComponent'));
+
+type EquationComponentProps = {
+    equation: string;
+    inline: boolean;
+    nodeKey: NodeKey;
+  };
+  
+  export function EquationComponent({
+    equation,
+    inline,
+    nodeKey,
+  }: EquationComponentProps): JSX.Element {
+    const [editor] = useLexicalComposerContext();
+    const [equationValue, setEquationValue] = useState(equation);
+    const [showEquationEditor, setShowEquationEditor] = useState<boolean>(false);
+    const inputRef = useRef(null);
+  
+    const onHide = useCallback(
+      (restoreSelection?: boolean) => {
+        setShowEquationEditor(false);
+        editor.update(() => {
+          const node = $getNodeByKey(nodeKey);
+          if ($isEquationNode(node)) {
+            node.setEquation(equationValue);
+            if (restoreSelection) {
+              node.selectNext(0, 0);
+            }
+          }
+        });
+      },
+      [editor, equationValue, nodeKey],
+    );
+  
+    useEffect(() => {
+      if (!showEquationEditor && equationValue !== equation) {
+        setEquationValue(equation);
+      }
+    }, [showEquationEditor, equation, equationValue]);
+  
+    useEffect(() => {
+      if (showEquationEditor) {
+        return mergeRegister(
+          editor.registerCommand(
+            SELECTION_CHANGE_COMMAND,
+            (payload) => {
+              const activeElement = document.activeElement;
+              const inputElem = inputRef.current;
+              if (inputElem !== activeElement) {
+                onHide();
+              }
+              return false;
+            },
+            COMMAND_PRIORITY_HIGH,
+          ),
+          editor.registerCommand(
+            KEY_ESCAPE_COMMAND,
+            (payload) => {
+              const activeElement = document.activeElement;
+              const inputElem = inputRef.current;
+              if (inputElem === activeElement) {
+                onHide(true);
+                return true;
+              }
+              return false;
+            },
+            COMMAND_PRIORITY_HIGH,
+          ),
+        );
+      } else {
+        return editor.registerUpdateListener(({editorState}) => {
+          const isSelected = editorState.read(() => {
+            const selection = $getSelection();
+            return (
+              $isNodeSelection(selection) &&
+              selection.has(nodeKey) &&
+              selection.getNodes().length === 1
+            );
+          });
+          if (isSelected) {
+            setShowEquationEditor(true);
+          }
+        });
+      }
+    }, [editor, nodeKey, onHide, showEquationEditor]);
+  
+    return (
+      <>
+        {showEquationEditor ? (
+          <EquationEditor
+            equation={equationValue}
+            setEquation={setEquationValue}
+            inline={inline}
+            ref={inputRef}
+          />
+        ) : (
+          <ErrorBoundary onError={(e) => editor._onError(e)} fallback={null}>
+            <KatexRenderer
+              equation={equationValue}
+              inline={inline}
+              onDoubleClick={() => setShowEquationEditor(true)}
+            />
+          </ErrorBoundary>
+        )}
+      </>
+    );
+  }
+  
+function LazyImage_({
+    altText,
+    className,
+    imageRef,
+    src,
+    width,
+    height,
+    position,
+}: {
+    altText: string;
+    className: string | null;
+    height: 'inherit' | number;
+    imageRef: { current: null | HTMLImageElement };
+    src: string;
+    width: 'inherit' | number;
+    position: Position;
+}): JSX.Element {
+    useSuspenseImage(src);
+    return (
+        <img
+            className={className || undefined}
+            src={src}
+            alt={altText}
+            ref={imageRef}
+            data-position={position}
+            style={{
+                display: 'block',
+                height,
+                width,
+            }}
+            draggable="false"
+        />
+    );
+}
+
+export function InlineImageComponent({
+    src,
+    altText,
+    nodeKey,
+    width,
+    height,
+    showCaption,
+    caption,
+    position,
+}: {
+    altText: string;
+    caption: LexicalEditor;
+    height: 'inherit' | number;
+    nodeKey: NodeKey;
+    showCaption: boolean;
+    src: string;
+    width: 'inherit' | number;
+    position: Position;
+}): JSX.Element {
+    const [modal, showModal] = useModal();
+    const imageRef = useRef<null | HTMLImageElement>(null);
+    const buttonRef = useRef<HTMLButtonElement | null>(null);
+    const [isSelected, setSelected, clearSelection] =
+        useLexicalNodeSelection(nodeKey);
+    const [editor] = useLexicalComposerContext();
+    const [selection, setSelection] = useState<BaseSelection | null>(null);
+    const activeEditorRef = useRef<LexicalEditor | null>(null);
+
+    const onDelete = useCallback(
+        (payload: KeyboardEvent) => {
+            if (isSelected && $isNodeSelection($getSelection())) {
+                const event: KeyboardEvent = payload;
+                event.preventDefault();
+                const node = $getNodeByKey(nodeKey);
+                if ($isInlineImageNode(node)) {
+                    node.remove();
+                    return true;
+                }
+            }
+            return false;
+        },
+        [isSelected, nodeKey],
+    );
+
+    const onEnter = useCallback(
+        (event: KeyboardEvent) => {
+            const latestSelection = $getSelection();
+            const buttonElem = buttonRef.current;
+            if (
+                isSelected &&
+                $isNodeSelection(latestSelection) &&
+                latestSelection.getNodes().length === 1
+            ) {
+                if (showCaption) {
+                    // Move focus into nested editor
+                    $setSelection(null);
+                    event.preventDefault();
+                    caption.focus();
+                    return true;
+                } else if (
+                    buttonElem !== null &&
+                    buttonElem !== document.activeElement
+                ) {
+                    event.preventDefault();
+                    buttonElem.focus();
+                    return true;
+                }
+            }
+            return false;
+        },
+        [caption, isSelected, showCaption],
+    );
+
+    const onEscape = useCallback(
+        (event: KeyboardEvent) => {
+            if (
+                activeEditorRef.current === caption ||
+                buttonRef.current === event.target
+            ) {
+                $setSelection(null);
+                editor.update(() => {
+                    setSelected(true);
+                    const parentRootElement = editor.getRootElement();
+                    if (parentRootElement !== null) {
+                        parentRootElement.focus();
+                    }
+                });
+                return true;
+            }
+            return false;
+        },
+        [caption, editor, setSelected],
+    );
+
+    useEffect(() => {
+        let isMounted = true;
+        const unregister = mergeRegister(
+            editor.registerUpdateListener(({ editorState }) => {
+                if (isMounted) {
+                    setSelection(editorState.read(() => $getSelection()));
+                }
+            }),
+            editor.registerCommand(
+                SELECTION_CHANGE_COMMAND,
+                (_, activeEditor) => {
+                    activeEditorRef.current = activeEditor;
+                    return false;
+                },
+                COMMAND_PRIORITY_LOW,
+            ),
+            editor.registerCommand<MouseEvent>(
+                CLICK_COMMAND,
+                (payload) => {
+                    const event = payload;
+                    if (event.target === imageRef.current) {
+                        if (event.shiftKey) {
+                            setSelected(!isSelected);
+                        } else {
+                            clearSelection();
+                            setSelected(true);
+                        }
+                        return true;
+                    }
+
+                    return false;
+                },
+                COMMAND_PRIORITY_LOW,
+            ),
+            editor.registerCommand(
+                DRAGSTART_COMMAND,
+                (event) => {
+                    if (event.target === imageRef.current) {
+                        // TODO This is just a temporary workaround for FF to behave like other browsers.
+                        // Ideally, this handles drag & drop too (and all browsers).
+                        event.preventDefault();
+                        return true;
+                    }
+                    return false;
+                },
+                COMMAND_PRIORITY_LOW,
+            ),
+            editor.registerCommand(
+                KEY_DELETE_COMMAND,
+                onDelete,
+                COMMAND_PRIORITY_LOW,
+            ),
+            editor.registerCommand(
+                KEY_BACKSPACE_COMMAND,
+                onDelete,
+                COMMAND_PRIORITY_LOW,
+            ),
+            editor.registerCommand(KEY_ENTER_COMMAND, onEnter, COMMAND_PRIORITY_LOW),
+            editor.registerCommand(
+                KEY_ESCAPE_COMMAND,
+                onEscape,
+                COMMAND_PRIORITY_LOW,
+            ),
+        );
+        return () => {
+            isMounted = false;
+            unregister();
+        };
+    }, [
+        clearSelection,
+        editor,
+        isSelected,
+        nodeKey,
+        onDelete,
+        onEnter,
+        onEscape,
+        setSelected,
+    ]);
+
+    const draggable = isSelected && $isNodeSelection(selection);
+    const isFocused = isSelected;
+    return (
+        <Suspense fallback={null}>
+            <>
+                <div draggable={draggable}>
+                    <button
+                        className="image-edit-button"
+                        ref={buttonRef}
+                        onClick={() => {
+                            showModal('Update Inline Image', (onClose) => (
+                                <UpdateInlineImageDialog
+                                    activeEditor={editor}
+                                    nodeKey={nodeKey}
+                                    onClose={onClose}
+                                />
+                            ));
+                        }}>
+                        Edit
+                    </button>
+                    <LazyImage_
+                        className={
+                            isFocused
+                                ? `focused ${$isNodeSelection(selection) ? 'draggable' : ''}`
+                                : null
+                        }
+                        src={src}
+                        altText={altText}
+                        imageRef={imageRef}
+                        width={width}
+                        height={height}
+                        position={position}
+                    />
+                </div>
+                {showCaption && (
+                    <div className="image-caption-container">
+                        <LexicalNestedComposer initialEditor={caption}>
+                            <AutoFocusPlugin />
+                            <LinkPlugin />
+                            <FloatingTextFormatToolbarPlugin />
+                            <RichTextPlugin
+                                contentEditable={
+                                    <ContentEditable className="InlineImageNode__contentEditable" />
+                                }
+                                placeholder={
+                                    <Placeholder className="InlineImageNode__placeholder">
+                                        Enter a caption...
+                                    </Placeholder>
+                                }
+                                ErrorBoundary={LexicalErrorBoundary}
+                            />
+                        </LexicalNestedComposer>
+                    </div>
+                )}
+            </>
+            {modal}
+        </Suspense>
+    );
+}
 
 export class YouTubeNode extends DecoratorBlockNode {
     __id: string;
@@ -1017,7 +1395,6 @@ export const PLAYGROUND_TRANSFORMERS: Array<Transformer> = [
 
 type Dimension = number | 'inherit';
 
-const ExcalidrawComponent = React.lazy(() => import('./ExcalidrawComponent'));
 
 export type SerializedExcalidrawNode = Spread<
     {
@@ -1194,7 +1571,7 @@ export function ExcalidrawModal({
 
     const save = () => {
         if (elements.filter((el) => !el.isDeleted).length > 0) {
-            const appState = excalidrawAPI?.getAppState();
+            const appState = excalidrawAPI!.getAppState();
             // We only need a subset of the state
             const partialState: Partial<AppState> = {
                 exportBackground: appState.exportBackground,
@@ -1303,44 +1680,6 @@ export function ExcalidrawModal({
 
 type ImageType = 'svg' | 'canvas';
 
-type Props = {
-    /**
-     * Configures the export setting for SVG/Canvas
-     */
-    appState: AppState;
-    /**
-     * The css class applied to image to be rendered
-     */
-    className?: string;
-    /**
-     * The Excalidraw elements to be rendered as an image
-     */
-    elements: NonDeleted<ExcalidrawElement>[];
-    /**
-     * The Excalidraw elements to be rendered as an image
-     */
-    files: BinaryFiles;
-    /**
-     * The height of the image to be rendered
-     */
-    height?: number | null;
-    /**
-     * The ref object to be used to render the image
-     */
-    imageContainerRef: { current: null | HTMLDivElement };
-    /**
-     * The type of image to be rendered
-     */
-    imageType?: ImageType;
-    /**
-     * The css class applied to the root element of this component
-     */
-    rootClassName?: string | null;
-    /**
-     * The width of the image to be rendered
-     */
-    width?: number | null;
-};
 
 // exportToSvg has fonts from excalidraw.com
 // We don't want them to be used in open source
@@ -1361,17 +1700,18 @@ const removeStyleFromSvg_HACK = (svg: SVGElement) => {
     }
 };
 
-/**
- * @explorer-desc
- * A component for rendering Excalidraw elements as a static image
- */
-export function ExcalidrawImage({
-    elements,
-    files,
-    imageContainerRef,
-    appState,
-    rootClassName = null,
-}: Props): JSX.Element {
+
+export function ExcalidrawImage({ elements, files, imageContainerRef, appState, rootClassName = null }: {
+    appState: AppState;
+    className?: string;
+    elements: NonDeleted<ExcalidrawElement>[];
+    files: BinaryFiles;
+    height?: number | null;
+    imageContainerRef: { current: null | HTMLDivElement };
+    imageType?: ImageType;
+    rootClassName?: string | null;
+    width?: number | null;
+}): JSX.Element {
     const [Svg, setSvg] = useState<SVGElement | null>(null);
 
     useEffect(() => {
@@ -1796,7 +2136,6 @@ export function $isTweetNode(
 
 
 
-const StickyComponent = React.lazy(() => import('./StickyComponent'));
 
 type StickyNoteColor = 'pink' | 'yellow';
 
@@ -2073,7 +2412,7 @@ export type Option = Readonly<{
     votes: Array<number>;
 }>;
 
-const PollComponent = React.lazy(() => import('./PollComponent'));
+
 
 function createUID(): string {
     return Math.random()
@@ -2351,117 +2690,6 @@ export function PollComponent({
 }
 
 
-
-
-type EquationComponentProps = {
-    equation: string;
-    inline: boolean;
-    nodeKey: NodeKey;
-};
-
-export function EquationComponent({
-    equation,
-    inline,
-    nodeKey,
-}: EquationComponentProps): JSX.Element {
-    const [editor] = useLexicalComposerContext();
-    const [equationValue, setEquationValue] = useState(equation);
-    const [showEquationEditor, setShowEquationEditor] = useState<boolean>(false);
-    const inputRef = useRef(null);
-
-    const onHide = useCallback(
-        (restoreSelection?: boolean) => {
-            setShowEquationEditor(false);
-            editor.update(() => {
-                const node = $getNodeByKey(nodeKey);
-                if ($isEquationNode(node)) {
-                    node.setEquation(equationValue);
-                    if (restoreSelection) {
-                        node.selectNext(0, 0);
-                    }
-                }
-            });
-        },
-        [editor, equationValue, nodeKey],
-    );
-
-    useEffect(() => {
-        if (!showEquationEditor && equationValue !== equation) {
-            setEquationValue(equation);
-        }
-    }, [showEquationEditor, equation, equationValue]);
-
-    useEffect(() => {
-        if (showEquationEditor) {
-            return mergeRegister(
-                editor.registerCommand(
-                    SELECTION_CHANGE_COMMAND,
-                    (payload) => {
-                        const activeElement = document.activeElement;
-                        const inputElem = inputRef.current;
-                        if (inputElem !== activeElement) {
-                            onHide();
-                        }
-                        return false;
-                    },
-                    COMMAND_PRIORITY_HIGH,
-                ),
-                editor.registerCommand(
-                    KEY_ESCAPE_COMMAND,
-                    (payload) => {
-                        const activeElement = document.activeElement;
-                        const inputElem = inputRef.current;
-                        if (inputElem === activeElement) {
-                            onHide(true);
-                            return true;
-                        }
-                        return false;
-                    },
-                    COMMAND_PRIORITY_HIGH,
-                ),
-            );
-        } else {
-            return editor.registerUpdateListener(({ editorState }) => {
-                const isSelected = editorState.read(() => {
-                    const selection = $getSelection();
-                    return (
-                        $isNodeSelection(selection) &&
-                        selection.has(nodeKey) &&
-                        selection.getNodes().length === 1
-                    );
-                });
-                if (isSelected) {
-                    setShowEquationEditor(true);
-                }
-            });
-        }
-    }, [editor, nodeKey, onHide, showEquationEditor]);
-
-    return (
-        <>
-            {showEquationEditor ? (
-                <EquationEditor
-                    equation={equationValue}
-                    setEquation={setEquationValue}
-                    inline={inline}
-                    ref={inputRef}
-                />
-            ) : (
-                <ErrorBoundary onError={(e) => editor._onError(e)} fallback={null}>
-                    <KatexRenderer
-                        equation={equationValue}
-                        inline={inline}
-                        onDoubleClick={() => setShowEquationEditor(true)}
-                    />
-                </ErrorBoundary>
-            )}
-        </>
-    );
-}
-
-
-
-const EquationComponent = React.lazy(() => import('./EquationComponent'));
 
 export type SerializedEquationNode = Spread<
     {
@@ -3061,17 +3289,17 @@ export function ImageComponent({
                     <div className="image-caption-container">
                         <LexicalNestedComposer initialEditor={caption}>
                             <AutoFocusPlugin />
-                            <MentionsPlugin />
+                            {/* <MentionsPlugin /> */}
                             <LinkPlugin />
                             <EmojisPlugin />
                             <HashtagPlugin />
                             <KeywordsPlugin />
-                            {isCollabActive ? (
-                                <CollaborationPlugin
-                                    id={caption.getKey()}
-                                    providerFactory={createWebsocketProvider}
-                                    shouldBootstrap={true}
-                                />
+                            {isCollabActive ? (<></>
+                                // <CollaborationPlugin
+                                //     id={caption.getKey()}
+                                //     providerFactory={createWebsocketProvider}
+                                //     shouldBootstrap={true}
+                                // />
                             ) : (
                                 <HistoryPlugin externalHistoryState={historyState} />
                             )}
@@ -3111,7 +3339,6 @@ export function ImageComponent({
 
 
 
-const ImageComponent = React.lazy(() => import('./ImageComponent'));
 
 export interface ImagePayload {
     altText: string;
@@ -3180,57 +3407,6 @@ export function $isImageNode(
     node: LexicalNode | null | undefined,
 ): node is ImageNode {
     return node instanceof ImageNode;
-}
-
-
-const imageCache = new Set();
-
-function useSuspenseImage(src: string) {
-    if (!imageCache.has(src)) {
-        throw new Promise((resolve) => {
-            const img = new Image();
-            img.src = src;
-            img.onload = () => {
-                imageCache.add(src);
-                resolve(null);
-            };
-        });
-    }
-}
-
-function LazyImage({
-    altText,
-    className,
-    imageRef,
-    src,
-    width,
-    height,
-    position,
-}: {
-    altText: string;
-    className: string | null;
-    height: 'inherit' | number;
-    imageRef: { current: null | HTMLImageElement };
-    src: string;
-    width: 'inherit' | number;
-    position: Position;
-}): JSX.Element {
-    useSuspenseImage(src);
-    return (
-        <img
-            className={className || undefined}
-            src={src}
-            alt={altText}
-            ref={imageRef}
-            data-position={position}
-            style={{
-                display: 'block',
-                height,
-                width,
-            }}
-            draggable="false"
-        />
-    );
 }
 
 export function UpdateInlineImageDialog({
@@ -3313,241 +3489,6 @@ export function UpdateInlineImageDialog({
     );
 }
 
-export function InlineImageComponent({
-    src,
-    altText,
-    nodeKey,
-    width,
-    height,
-    showCaption,
-    caption,
-    position,
-}: {
-    altText: string;
-    caption: LexicalEditor;
-    height: 'inherit' | number;
-    nodeKey: NodeKey;
-    showCaption: boolean;
-    src: string;
-    width: 'inherit' | number;
-    position: Position;
-}): JSX.Element {
-    const [modal, showModal] = useModal();
-    const imageRef = useRef<null | HTMLImageElement>(null);
-    const buttonRef = useRef<HTMLButtonElement | null>(null);
-    const [isSelected, setSelected, clearSelection] =
-        useLexicalNodeSelection(nodeKey);
-    const [editor] = useLexicalComposerContext();
-    const [selection, setSelection] = useState<BaseSelection | null>(null);
-    const activeEditorRef = useRef<LexicalEditor | null>(null);
-
-    const onDelete = useCallback(
-        (payload: KeyboardEvent) => {
-            if (isSelected && $isNodeSelection($getSelection())) {
-                const event: KeyboardEvent = payload;
-                event.preventDefault();
-                const node = $getNodeByKey(nodeKey);
-                if ($isInlineImageNode(node)) {
-                    node.remove();
-                    return true;
-                }
-            }
-            return false;
-        },
-        [isSelected, nodeKey],
-    );
-
-    const onEnter = useCallback(
-        (event: KeyboardEvent) => {
-            const latestSelection = $getSelection();
-            const buttonElem = buttonRef.current;
-            if (
-                isSelected &&
-                $isNodeSelection(latestSelection) &&
-                latestSelection.getNodes().length === 1
-            ) {
-                if (showCaption) {
-                    // Move focus into nested editor
-                    $setSelection(null);
-                    event.preventDefault();
-                    caption.focus();
-                    return true;
-                } else if (
-                    buttonElem !== null &&
-                    buttonElem !== document.activeElement
-                ) {
-                    event.preventDefault();
-                    buttonElem.focus();
-                    return true;
-                }
-            }
-            return false;
-        },
-        [caption, isSelected, showCaption],
-    );
-
-    const onEscape = useCallback(
-        (event: KeyboardEvent) => {
-            if (
-                activeEditorRef.current === caption ||
-                buttonRef.current === event.target
-            ) {
-                $setSelection(null);
-                editor.update(() => {
-                    setSelected(true);
-                    const parentRootElement = editor.getRootElement();
-                    if (parentRootElement !== null) {
-                        parentRootElement.focus();
-                    }
-                });
-                return true;
-            }
-            return false;
-        },
-        [caption, editor, setSelected],
-    );
-
-    useEffect(() => {
-        let isMounted = true;
-        const unregister = mergeRegister(
-            editor.registerUpdateListener(({ editorState }) => {
-                if (isMounted) {
-                    setSelection(editorState.read(() => $getSelection()));
-                }
-            }),
-            editor.registerCommand(
-                SELECTION_CHANGE_COMMAND,
-                (_, activeEditor) => {
-                    activeEditorRef.current = activeEditor;
-                    return false;
-                },
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand<MouseEvent>(
-                CLICK_COMMAND,
-                (payload) => {
-                    const event = payload;
-                    if (event.target === imageRef.current) {
-                        if (event.shiftKey) {
-                            setSelected(!isSelected);
-                        } else {
-                            clearSelection();
-                            setSelected(true);
-                        }
-                        return true;
-                    }
-
-                    return false;
-                },
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand(
-                DRAGSTART_COMMAND,
-                (event) => {
-                    if (event.target === imageRef.current) {
-                        // TODO This is just a temporary workaround for FF to behave like other browsers.
-                        // Ideally, this handles drag & drop too (and all browsers).
-                        event.preventDefault();
-                        return true;
-                    }
-                    return false;
-                },
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand(
-                KEY_DELETE_COMMAND,
-                onDelete,
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand(
-                KEY_BACKSPACE_COMMAND,
-                onDelete,
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand(KEY_ENTER_COMMAND, onEnter, COMMAND_PRIORITY_LOW),
-            editor.registerCommand(
-                KEY_ESCAPE_COMMAND,
-                onEscape,
-                COMMAND_PRIORITY_LOW,
-            ),
-        );
-        return () => {
-            isMounted = false;
-            unregister();
-        };
-    }, [
-        clearSelection,
-        editor,
-        isSelected,
-        nodeKey,
-        onDelete,
-        onEnter,
-        onEscape,
-        setSelected,
-    ]);
-
-    const draggable = isSelected && $isNodeSelection(selection);
-    const isFocused = isSelected;
-    return (
-        <Suspense fallback={null}>
-            <>
-                <div draggable={draggable}>
-                    <button
-                        className="image-edit-button"
-                        ref={buttonRef}
-                        onClick={() => {
-                            showModal('Update Inline Image', (onClose) => (
-                                <UpdateInlineImageDialog
-                                    activeEditor={editor}
-                                    nodeKey={nodeKey}
-                                    onClose={onClose}
-                                />
-                            ));
-                        }}>
-                        Edit
-                    </button>
-                    <LazyImage
-                        className={
-                            isFocused
-                                ? `focused ${$isNodeSelection(selection) ? 'draggable' : ''}`
-                                : null
-                        }
-                        src={src}
-                        altText={altText}
-                        imageRef={imageRef}
-                        width={width}
-                        height={height}
-                        position={position}
-                    />
-                </div>
-                {showCaption && (
-                    <div className="image-caption-container">
-                        <LexicalNestedComposer initialEditor={caption}>
-                            <AutoFocusPlugin />
-                            <LinkPlugin />
-                            <FloatingTextFormatToolbarPlugin />
-                            <RichTextPlugin
-                                contentEditable={
-                                    <ContentEditable className="InlineImageNode__contentEditable" />
-                                }
-                                placeholder={
-                                    <Placeholder className="InlineImageNode__placeholder">
-                                        Enter a caption...
-                                    </Placeholder>
-                                }
-                                ErrorBoundary={LexicalErrorBoundary}
-                            />
-                        </LexicalNestedComposer>
-                    </div>
-                )}
-            </>
-            {modal}
-        </Suspense>
-    );
-}
-
-
-const InlineImageComponent = React.lazy(() => import('./InlineImageComponent'));
 
 export type Position = 'left' | 'right' | 'full' | undefined;
 
