@@ -1,10 +1,4 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
+
 
 import {$createCodeNode} from '@lexical/code';
 import {
@@ -32,10 +26,8 @@ import {
   TextNode,
 } from 'lexical';
 import {useCallback, useMemo, useState} from 'react';
-import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
-import catTypingGif from '../../images/cat-typing.gif';
 import {EmbedConfigs} from '../AutoEmbedPlugin';
 import {INSERT_COLLAPSIBLE_COMMAND} from '../CollapsiblePlugin';
 import {InsertEquationDialog} from '../EquationsPlugin';
@@ -276,7 +268,7 @@ function getBaseOptions(editor: LexicalEditor, showModal: ShowModal) {
       onSelect: () =>
         editor.dispatchCommand(INSERT_IMAGE_COMMAND, {
           altText: 'Cat typing on a laptop',
-          src: catTypingGif,
+          src: "",
         }),
     }),
     new ComponentPickerOption('Image', {

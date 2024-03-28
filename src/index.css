@@ -366,7 +366,7 @@ pre::-webkit-scrollbar-thumb {
   width: 200px;
 }
 
-i.palette {
+/* i.palette {
   background-image: url(images/icons/palette.svg);
 }
 
@@ -436,19 +436,16 @@ i.horizontal-rule {
 
 .icon.bg-color {
   background-image: url(images/icons/bg-color.svg);
-}
+} */
 
 .icon.table {
   background-color: #6c757d;
-  mask-image: url(images/icons/table.svg);
-  -webkit-mask-image: url(images/icons/table.svg);
+  /* mask-image: url(images/icons/table.svg); */
   mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
   mask-size: contain;
-  -webkit-mask-size: contain;
 }
 
-i.image {
+/* i.image {
   background-image: url(images/icons/file-image.svg);
 }
 
@@ -470,22 +467,22 @@ i.poll {
 
 i.columns {
   background-image: url(images/icons/3-columns.svg);
-}
+} */
 
 i.tweet {
-  background-image: url(images/icons/tweet.svg);
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-twitter"><path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z"/></svg>');
 }
-
+/* url('data:image/svg+xml,') */
 i.youtube {
-  background-image: url(images/icons/youtube.svg);
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-youtube"><path d="M8.051 1.999h.089c.822.003 4.987.033 6.11.335a2.01 2.01 0 0 1 1.415 1.42c.101.38.172.883.22 1.402l.01.104.022.26.008.104c.065.914.073 1.77.074 1.957v.075c-.001.194-.01 1.108-.082 2.06l-.008.105-.009.104c-.05.572-.124 1.14-.235 1.558a2.007 2.007 0 0 1-1.415 1.42c-1.16.312-5.569.334-6.18.335h-.142c-.309 0-1.587-.006-2.927-.052l-.17-.006-.087-.004-.171-.007-.171-.007c-1.11-.049-2.167-.128-2.654-.26a2.007 2.007 0 0 1-1.415-1.419c-.111-.417-.185-.986-.235-1.558L.09 9.82l-.008-.104A31.4 31.4 0 0 1 0 7.68v-.123c.002-.215.01-.958.064-1.778l.007-.103.003-.052.008-.104.022-.26.01-.104c.048-.519.119-1.023.22-1.402a2.007 2.007 0 0 1 1.415-1.42c.487-.13 1.544-.21 2.654-.26l.17-.007.172-.006.086-.003.171-.007A99.788 99.788 0 0 1 7.858 2h.193zM6.4 5.209v4.818l4.157-2.408L6.4 5.209z"/></svg>');
 }
 
 .icon.left-align,
 i.left-align {
-  background-image: url(images/icons/text-left.svg);
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-text-left"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5z"/></svg>');
 }
 
-.icon.center-align,
+/* .icon.center-align,
 i.center-align {
   background-image: url(images/icons/text-center.svg);
 }
@@ -538,13 +535,13 @@ i.export {
 
 i.diagram-2 {
   background-image: url(images/icons/diagram-2.svg);
-}
+} */
 
 i.user {
-  background-image: url(images/icons/user.svg);
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Pro 6.1.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license (Commercial License) Copyright 2022 Fonticons, Inc.--><path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0zm0 128c39.77 0 72 32.24 72 72s-32.2 72-72 72c-39.76 0-72-32.24-72-72s32.2-72 72-72zm0 320c-52.93 0-100.9-21.53-135.7-56.29C136.5 349.9 176.5 320 224 320h64c47.54 0 87.54 29.88 103.7 71.71C356.9 426.5 308.9 448 256 448z"/></svg>');
 }
 
-i.equation {
+/* i.equation {
   background-image: url(images/icons/plus-slash-minus.svg);
 }
 
@@ -571,7 +568,7 @@ i.prettier-error {
 i.page-break,
 .icon.page-break {
   background-image: url(images/icons/scissors.svg);
-}
+} */
 
 .link-editor .button.active,
 .toolbar .button.active {
@@ -1235,7 +1232,7 @@ i.page-break,
   vertical-align: -0.25em;
 }
 
-.actions i.indent {
+/* .actions i.indent {
   background-image: url(images/icons/indent.svg);
 }
 
@@ -1281,7 +1278,7 @@ i.page-break,
 
 .actions i.connect {
   background-image: url(images/icons/plug-fill.svg);
-}
+} */
 
 .table-cell-action-button-container {
   position: absolute;
@@ -2012,7 +2009,7 @@ hr.selected {
   width: 16px;
   height: 16px;
   opacity: 0.3;
-  background-image: url(../../images/icons/draggable-block-menu.svg);
+  /* background-image: url(../../images/icons/draggable-block-menu.svg); */
 }
 
 .draggable-block-menu:active {
@@ -2070,7 +2067,7 @@ i.add-comment {
   height: 20px;
   width: 20px;
   vertical-align: -10px;
-  background-image: url(../../images/icons/chat-left-text.svg);
+  /* background-image: url(../../images/icons/chat-left-text.svg); */
 }
 
 @media (max-width: 1024px) {
@@ -2189,7 +2186,7 @@ i.comments {
   height: 20px;
   width: 20px;
   vertical-align: -10px;
-  background-image: url(../../images/icons/comments.svg);
+  /* background-image: url(../../images/icons/comments.svg); */
   opacity: 0.5;
   transition: opacity 0.2s linear;
 }
@@ -2281,7 +2278,7 @@ i.send {
   height: 20px;
   width: 20px;
   vertical-align: -10px;
-  background-image: url(../../images/icons/send.svg);
+  /* background-image: url(../../images/icons/send.svg); */
   opacity: 0.5;
   transition: opacity 0.2s linear;
 }
@@ -2468,7 +2465,7 @@ i.send {
   height: 15px;
   width: 15px;
   vertical-align: -10px;
-  background-image: url(../../images/icons/trash3.svg);
+  /* background-image: url(../../images/icons/trash3.svg); */
   transition: opacity 0.2s linear;
 }
 
@@ -3186,7 +3183,7 @@ select {
 }
 
 .PlaygroundEditorTheme__tableAddColumns:after {
-  background-image: url(../images/icons/plus.svg);
+  /* background-image: url(../images/icons/plus.svg); */
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -3217,7 +3214,7 @@ select {
 }
 
 .PlaygroundEditorTheme__tableAddRows:after {
-  background-image: url(../images/icons/plus.svg);
+  /* background-image: url(../images/icons/plus.svg); */
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -3508,13 +3505,13 @@ input[type='number'] {
 }
 
 .add-icon {
-  background-image: url(../../images/icons/add-sign.svg);
+  /* background-image: url(../../images/icons/add-sign.svg); */
   background-repeat: no-repeat;
   background-position: center;
 }
 
 .minus-icon {
-  background-image: url(../../images/icons/minus-sign.svg);
+  /* background-image: url(../../images/icons/minus-sign.svg); */
   background-repeat: no-repeat;
   background-position: center;
 }

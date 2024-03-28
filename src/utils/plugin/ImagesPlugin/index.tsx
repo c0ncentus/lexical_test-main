@@ -19,11 +19,6 @@ import {
   LexicalEditor,
 } from 'lexical';
 import {useEffect, useRef, useState} from 'react';
-
-
-import landscapeImage from '../../images/landscape.jpg';
-import yellowFlowerImage from '../../images/yellow-flower.jpg';
-
 import { TextInput, DialogActions, FileInput, DialogButtonsList,Button } from '../../LibLexical';
 import { CAN_USE_DOM } from '../../utils';
 import { ImagePayload, ImageNode, $createImageNode, $isImageNode } from '../../NODES';
@@ -162,11 +157,11 @@ export function InsertImageDialog({
                   ? {
                       altText:
                         'Daylight fir trees forest glacier green high ice landscape',
-                      src: landscapeImage,
+                      src: "",
                     }
                   : {
                       altText: 'Yellow flower in tilt shift lens',
-                      src: yellowFlowerImage,
+                      src: "",
                     },
               )
             }>

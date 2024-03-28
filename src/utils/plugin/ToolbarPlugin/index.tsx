@@ -72,19 +72,9 @@ import {
 } from 'lexical';
 import {Dispatch, useCallback, useEffect, useState} from 'react';
 import * as React from 'react';
-import {IS_APPLE} from 'shared/environment';
 
-import useModal from '../../hooks/useModal';
-import catTypingGif from '../../images/cat-typing.gif';
-import {$createStickyNode} from '../../nodes/StickyNode';
-import DropDown, {DropDownItem} from '../../ui/DropDown';
-import DropdownColorPicker from '../../ui/DropdownColorPicker';
-import {getSelectedNode} from '../../utils/getSelectedNode';
-import {sanitizeUrl} from '../../utils/url';
-import {EmbedConfigs} from '../AutoEmbedPlugin';
-import {INSERT_COLLAPSIBLE_COMMAND} from '../CollapsiblePlugin';
-import {InsertEquationDialog} from '../EquationsPlugin';
-import {INSERT_EXCALIDRAW_COMMAND} from '../ExcalidrawPlugin';
+
+
 import {
   INSERT_IMAGE_COMMAND,
   InsertImageDialog,
@@ -96,7 +86,18 @@ import {INSERT_PAGE_BREAK} from '../PageBreakPlugin';
 import {InsertPollDialog} from '../PollPlugin';
 import {InsertTableDialog} from '../TablePlugin';
 import FontSize from './fontSize';
+import { DropDown, DropDownItem, DropdownColorPicker } from '../../LibLexical';
+import { $createStickyNode } from '../../NODES';
+import { useModal } from '../../hooks';
+import { getSelectedNode, sanitizeUrl } from '../../utils';
+import { EmbedConfigs } from '../AutoEmbedPlugin';
+import { INSERT_COLLAPSIBLE_COMMAND } from '../CollapsiblePlugin';
+import { InsertEquationDialog } from '../EquationsPlugin';
+import { INSERT_EXCALIDRAW_COMMAND } from '../ExcalidrawPlugin';
 
+
+
+const IS_APPLE=false;
 const blockTypeToBlockName = {
   bullet: 'Bulleted List',
   check: 'Check List',
@@ -1075,7 +1076,7 @@ export default function ToolbarPlugin({
               onClick={() =>
                 insertGifOnClick({
                   altText: 'Cat typing on a laptop',
-                  src: catTypingGif,
+                  src: "",
                 })
               }
               className="item">

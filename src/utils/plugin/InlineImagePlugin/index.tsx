@@ -21,7 +21,7 @@ import {
 import * as React from 'react';
 import {useEffect, useRef, useState} from 'react';
 import {  FileInput, TextInput, Select, DialogActions, Button } from '../../LibLexical';
-import { InlineImagePayload, InlineImageNode, $createInlineImageNode, $isInlineImageNode } from '../../NODES';
+import { InlineImagePayload, InlineImageNode, $createInlineImageNode, $isInlineImageNode, Position } from '../../NODES';
 import { CAN_USE_DOM} from '../../utils';
 
  type InsertInlineImagePayload = Readonly<InlineImagePayload>;

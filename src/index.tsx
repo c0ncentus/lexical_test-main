@@ -1,11 +1,11 @@
-import * as React from 'react';
-import ReactDOM from 'react-dom/client';
-const root = ReactDOM.createRoot(
-  document.getElementById('root') as HTMLElement
-);
-root.render(
-  <React.StrictMode>
-    <></>
-  </React.StrictMode>
-);
+import './index.css';
+import 'katex/dist/katex.css';
+import {createRoot} from 'react-dom/client';
+import {PlaygroundApp} from './App';
+import React from 'react';
 
+createRoot(document.getElementById('root') as HTMLElement).render(
+  <React.StrictMode>
+    <PlaygroundApp />
+  </React.StrictMode>,
+);

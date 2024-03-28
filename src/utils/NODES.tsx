@@ -47,6 +47,9 @@ import FloatingTextFormatToolbarPlugin from './plugin/FloatingTextFormatToolbarP
 import KeywordsPlugin from './plugin/KeywordsPlugin';
 import TreeViewPlugin from './plugin/TreeViewPlugin';
 import { uuid } from './plugin/AutocompletePlugin';
+import { HashtagNode } from '@lexical/hashtag';
+import { MarkNode } from '@lexical/mark';
+import { OverflowNode } from '@lexical/overflow';
 
 
 export class EquationNode extends DecoratorNode<JSX.Element> {
@@ -4419,5 +4422,5 @@ export const PlaygroundNodes: Array<Klass<LexicalNode>> = [
     HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode, AutoLinkNode, LinkNode, PollNode, StickyNode,
     ImageNode, InlineImageNode, MentionNode, EmojiNode, HorizontalRuleNode, TweetNode, YouTubeNode, FigmaNode, CollapsibleContainerNode,
     CollapsibleContentNode, CollapsibleTitleNode, ExcalidrawNode, EquationNode, AutocompleteNode, KeywordNode, PageBreakNode,
-    LayoutContainerNode, LayoutItemNode, // MarkNode,OverflowNode,TableNode, TableCellNode, TableRowNode, HashtagNode,
+    LayoutContainerNode, LayoutItemNode, MarkNode,OverflowNode,TableNode, TableCellNode, TableRowNode, HashtagNode,
 ];

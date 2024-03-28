@@ -28,13 +28,13 @@ import {
 import * as React from 'react';
 import {useCallback, useEffect, useState} from 'react';
 
-import useModal from '../../hooks/useModal';
-import Button from '../../ui/Button';
 import {PLAYGROUND_TRANSFORMERS} from '../MarkdownTransformers';
 import {
   SPEECH_TO_TEXT_COMMAND,
   SUPPORT_SPEECH_RECOGNITION,
 } from '../SpeechToTextPlugin';
+import { useModal } from '../../hooks';
+import { Button } from '../../LibLexical';
 
 async function sendEditorState(editor: LexicalEditor): Promise<void> {
   const stringifiedEditorState = JSON.stringify(editor.getEditorState());
