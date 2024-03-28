@@ -1,1651 +1,1683 @@
+
 import * as React from 'react';
 import { 
     useEffect, useRef, useState, createContext, useContext, useMemo,useCallback ,Dispatch,   
      MouseEventHandler, ReactPortal, DragEvent as ReactDragEvent
     } from 'react';
 
+import { useSharedHistoryContext, useSettings, SettingsContext, SharedAutocompleteContext, SharedHistoryContext,
+    useSharedAutocompleteContext
+    } from './context';
+    import { Point, Rect, addSwipeDownListener, addSwipeLeftListener, addSwipeRightListener, addSwipeUpListener, baseTheme, commentTheme, 
+      getDOMRangeRect, getSelectedNode, isHTMLElement, isPoint, sanitizeUrl, setFloatingElemPosition, setFloatingElemPositionForLinkEditor, stickyEditorTheme,
+      validateUrl
+      } from './utils';
+    
+    import {$createAutocompleteNode, $createEmojiNode, $createEquationNode, $createExcalidrawNode, $createFigmaNode, $createImageNode,
+      $createInlineImageNode,$createKeywordNode,$createPageBreakNode, $createLayoutContainerNode, $createLayoutItemNode, $createMentionNode,
+      $createPollNode,$createStickyNode, $createTweetNode, $createYouTubeNode, $isEmojiNode, $isEquationNode, $isExcalidrawNode, $isFigmaNode,
+      $isImageNode, $isInlineImageNode, $isKeywordNode, $isLayoutContainerNode, $isLayoutItemNode, $isMentionNode, $isPageBreakNode, $isPollNode,
+      $isStickyNode, $isTweetNode, $isYouTubeNode,AutocompleteNode,EMOJI, EQUATION, EmojiNode, EquationComponent, EquationNode, ExcalidrawComponent, ExcalidrawElementFragment,
+      ExcalidrawImage, ExcalidrawModal, ExcalidrawNode,FigmaNode, HR, IMAGE, ImageComponent, ImageNode, ImagePayload, InlineImageComponent, 
+      InlineImageNode, InlineImagePayload, KeywordNode, LayoutContainerNode, LayoutItemNode, MentionNode, Option, Options, PLAYGROUND_TRANSFORMERS,
+      PageBreakNode,PlaygroundNodes,PollComponent,PollNode, Position, RIGHT_CLICK_IMAGE_COMMAND, SerializedAutocompleteNode, SerializedEmojiNode,
+      SerializedEquationNode, SerializedExcalidrawNode, SerializedFigmaNode, SerializedImageNode, SerializedInlineImageNode, SerializedKeywordNode, 
+      SerializedLayoutContainerNode,SerializedLayoutItemNode, SerializedMentionNode, SerializedPageBreakNode, SerializedPollNode, SerializedStickyNode,
+      SerializedTweetNode,SerializedYouTubeNode, StickyComponent, StickyNode, TABLE, TWEET, TweetNode, UpdateInlineImageDialog, UpdateInlineImagePayload,
+      YouTubeNode, createPollOption, useCallbackRefState
+    
+    } from "./NODES"
+    
+    import {
+      ContentEditable,Placeholder, Switch, Button, ColorPicker, CopyButton, DialogActions, DialogButtonsList, DropDown, DropDownItem,
+      DropdownColorPicker,EquationEditor, FileInput, ImageResizer, KatexEquationAlterer, KatexRenderer, LexicalContentEditable, Modal,
+      Position, PrettierButton, Select, TextInput, canBePrettier, toHex
+    } from './LibLexical';
 
-const CODE_PADDING = 8;
 
-interface Position {
-    top: string;
-    right: string;
-}
 
-function CodeActionMenuContainer({
-    anchorElem,
-}: {
-    anchorElem: HTMLElement;
-}): JSX.Element {
-    const [editor] = useLexicalComposerContext();
+    const CODE_PADDING = 8;
 
-    const [lang, setLang] = useState('');
-    const [isShown, setShown] = useState<boolean>(false);
-    const [shouldListenMouseMove, setShouldListenMouseMove] =
-        useState<boolean>(false);
-    const [position, setPosition] = useState<Position>({
-        right: '0',
-        top: '0',
-    });
-    const codeSetRef = useRef<Set<string>>(new Set());
-    const codeDOMNodeRef = useRef<HTMLElement | null>(null);
-
-    function getCodeDOMNode(): HTMLElement | null {
-        return codeDOMNodeRef.current;
+    interface Position {
+        top: string;
+        right: string;
     }
-
-    const debouncedOnMouseMove = useDebounce(
-        (event: MouseEvent) => {
-            const { codeDOMNode, isOutside } = getMouseInfo(event);
-            if (isOutside) {
+    
+    function CodeActionMenuContainer({
+        anchorElem,
+    }: {
+        anchorElem: HTMLElement;
+    }): JSX.Element {
+        const [editor] = useLexicalComposerContext();
+    
+        const [lang, setLang] = useState('');
+        const [isShown, setShown] = useState<boolean>(false);
+        const [shouldListenMouseMove, setShouldListenMouseMove] =
+            useState<boolean>(false);
+        const [position, setPosition] = useState<Position>({
+            right: '0',
+            top: '0',
+        });
+        const codeSetRef = useRef<Set<string>>(new Set());
+        const codeDOMNodeRef = useRef<HTMLElement | null>(null);
+    
+        function getCodeDOMNode(): HTMLElement | null {
+            return codeDOMNodeRef.current;
+        }
+    
+        const debouncedOnMouseMove = useDebounce(
+            (event: MouseEvent) => {
+                const { codeDOMNode, isOutside } = getMouseInfo(event);
+                if (isOutside) {
+                    setShown(false);
+                    return;
+                }
+    
+                if (!codeDOMNode) {
+                    return;
+                }
+    
+                codeDOMNodeRef.current = codeDOMNode;
+    
+                let codeNode: CodeNode | null = null;
+                let _lang = '';
+    
+                editor.update(() => {
+                    const maybeCodeNode = $getNearestNodeFromDOMNode(codeDOMNode);
+    
+                    if ($isCodeNode(maybeCodeNode)) {
+                        codeNode = maybeCodeNode;
+                        _lang = codeNode.getLanguage() || '';
+                    }
+                });
+    
+                if (codeNode) {
+                    const { y: editorElemY, right: editorElemRight } =
+                        anchorElem.getBoundingClientRect();
+                    const { y, right } = codeDOMNode.getBoundingClientRect();
+                    setLang(_lang);
+                    setShown(true);
+                    setPosition({
+                        right: `${editorElemRight - right + CODE_PADDING}px`,
+                        top: `${y - editorElemY}px`,
+                    });
+                }
+            },
+            50,
+            1000,
+        );
+    
+        useEffect(() => {
+            if (!shouldListenMouseMove) {
+                return;
+            }
+    
+            document.addEventListener('mousemove', debouncedOnMouseMove);
+    
+            return () => {
                 setShown(false);
-                return;
-            }
-
-            if (!codeDOMNode) {
-                return;
-            }
-
-            codeDOMNodeRef.current = codeDOMNode;
-
-            let codeNode: CodeNode | null = null;
-            let _lang = '';
-
-            editor.update(() => {
-                const maybeCodeNode = $getNearestNodeFromDOMNode(codeDOMNode);
-
-                if ($isCodeNode(maybeCodeNode)) {
-                    codeNode = maybeCodeNode;
-                    _lang = codeNode.getLanguage() || '';
+                debouncedOnMouseMove.cancel();
+                document.removeEventListener('mousemove', debouncedOnMouseMove);
+            };
+        }, [shouldListenMouseMove, debouncedOnMouseMove]);
+    
+        editor.registerMutationListener(CodeNode, (mutations) => {
+            editor.getEditorState().read(() => {
+                for (const [key, type] of mutations) {
+                    switch (type) {
+                        case 'created':
+                            codeSetRef.current.add(key);
+                            setShouldListenMouseMove(codeSetRef.current.size > 0);
+                            break;
+    
+                        case 'destroyed':
+                            codeSetRef.current.delete(key);
+                            setShouldListenMouseMove(codeSetRef.current.size > 0);
+                            break;
+    
+                        default:
+                            break;
+                    }
                 }
             });
-
-            if (codeNode) {
-                const { y: editorElemY, right: editorElemRight } =
-                    anchorElem.getBoundingClientRect();
-                const { y, right } = codeDOMNode.getBoundingClientRect();
-                setLang(_lang);
-                setShown(true);
-                setPosition({
-                    right: `${editorElemRight - right + CODE_PADDING}px`,
-                    top: `${y - editorElemY}px`,
-                });
-            }
-        },
-        50,
-        1000,
-    );
-
-    useEffect(() => {
-        if (!shouldListenMouseMove) {
-            return;
-        }
-
-        document.addEventListener('mousemove', debouncedOnMouseMove);
-
-        return () => {
-            setShown(false);
-            debouncedOnMouseMove.cancel();
-            document.removeEventListener('mousemove', debouncedOnMouseMove);
-        };
-    }, [shouldListenMouseMove, debouncedOnMouseMove]);
-
-    editor.registerMutationListener(CodeNode, (mutations) => {
-        editor.getEditorState().read(() => {
-            for (const [key, type] of mutations) {
-                switch (type) {
-                    case 'created':
-                        codeSetRef.current.add(key);
-                        setShouldListenMouseMove(codeSetRef.current.size > 0);
-                        break;
-
-                    case 'destroyed':
-                        codeSetRef.current.delete(key);
-                        setShouldListenMouseMove(codeSetRef.current.size > 0);
-                        break;
-
-                    default:
-                        break;
-                }
-            }
         });
-    });
-    const normalizedLang = normalizeCodeLang(lang);
-    const codeFriendlyName = getLanguageFriendlyName(lang);
-
-    return (
-        <>
-        {
-            isShown?(
-          <div className = "code-action-menu-container" style = {{ ...position }} >
-        <div className= "code-highlight-language" > { codeFriendlyName } < /div>
-        < CopyButton editor = { editor } getCodeDOMNode = { getCodeDOMNode } />
-            { canBePrettier(normalizedLang) ? (
-                <PrettierButton
-                editor={ editor }
-                getCodeDOMNode = { getCodeDOMNode }
-                lang = { normalizedLang }
-                />
-            ) : null
-}
-</div>
-        ) : null}
-</>
-    );
-  }
-
-function getMouseInfo(event: MouseEvent): {
-    codeDOMNode: HTMLElement | null;
-    isOutside: boolean;
-} {
-    const target = event.target;
-
-    if (target && target instanceof HTMLElement) {
-        const codeDOMNode = target.closest<HTMLElement>(
-            'code.PlaygroundEditorTheme__code',
-        );
-        const isOutside = !(
-            codeDOMNode ||
-            target.closest<HTMLElement>('div.code-action-menu-container')
-        );
-
-        return { codeDOMNode, isOutside };
-    } else {
-        return { codeDOMNode: null, isOutside: true };
+        const normalizedLang = normalizeCodeLang(lang);
+        const codeFriendlyName = getLanguageFriendlyName(lang);
+    
+        return (
+            <>
+            {
+                isShown?(
+              <div className = "code-action-menu-container" style = {{ ...position }} >
+            <div className= "code-highlight-language" > { codeFriendlyName } < /div>
+            < CopyButton editor = { editor } getCodeDOMNode = { getCodeDOMNode } />
+                { canBePrettier(normalizedLang) ? (
+                    <PrettierButton
+                    editor={ editor }
+                    getCodeDOMNode = { getCodeDOMNode }
+                    lang = { normalizedLang }
+                    />
+                ) : null
     }
-}
-
-export function CodeActionMenuPlugin({
-    anchorElem = document.body,
-}: {
-    anchorElem?: HTMLElement;
-}): React.ReactPortal | null {
-    return createPortal(
-        <CodeActionMenuContainer anchorElem={ anchorElem } />,
-        anchorElem,
-    );
-}
-
-
-
-
-
-
-
-
-
-
-const URL_REGEX =
-    /((https?:\/\/(www\.)?)|(www\.))[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/;
-
-const EMAIL_REGEX =
-    /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
-
-const MATCHERS = [
-    createLinkMatcherWithRegExp(URL_REGEX, (text) => {
-        return text.startsWith('http') ? text : `https://${text}`;
-    }),
-    createLinkMatcherWithRegExp(EMAIL_REGEX, (text) => {
-        return `mailto:${text}`;
-    }),
-];
-
-export function LexicalAutoLinkPlugin(): JSX.Element {
-    return <AutoLinkPlugin matchers={ MATCHERS } />;
-}
-
-
-
-
-
-
-
-interface PlaygroundEmbedConfig extends EmbedConfig {
-    // Human readable name of the embeded content e.g. Tweet or Google Map.
-    contentName: string;
-
-    // Icon for display.
-    icon?: JSX.Element;
-
-    // An example of a matching url https://twitter.com/jack/status/20
-    exampleUrl: string;
-
-    // For extra searching.
-    keywords: Array<string>;
-
-    // Embed a Figma Project.
-    description?: string;
-}
-
-export const YoutubeEmbedConfig: PlaygroundEmbedConfig = {
-    contentName: 'Youtube Video',
-
-    exampleUrl: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
-
-    // Icon for display.
-    icon: <i className="icon youtube" />,
-
-  insertNode: (editor: LexicalEditor, result: EmbedMatchResult) => {
-        editor.dispatchCommand(INSERT_YOUTUBE_COMMAND, result.id);
-    },
-
-    keywords: ['youtube', 'video'],
-
-    // Determine if a given URL is a match and return url data.
-    parseUrl: async (url: string) => {
-        const match =
-            /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url);
-
-        const id = match ? (match?.[2].length === 11 ? match[2] : null) : null;
-
-        if (id != null) {
-            return {
-                id,
-                url,
-            };
-        }
-
-        return null;
-    },
-
-    type: 'youtube-video',
-};
-
-export const TwitterEmbedConfig: PlaygroundEmbedConfig = {
-    // e.g. Tweet or Google Map.
-    contentName: 'Tweet',
-
-    exampleUrl: 'https://twitter.com/jack/status/20',
-
-    // Icon for display.
-    icon: <i className="icon tweet" />,
-
-  // Create the Lexical embed node from the url data.
-  insertNode: (editor: LexicalEditor, result: EmbedMatchResult) => {
-        editor.dispatchCommand(INSERT_TWEET_COMMAND, result.id);
-    },
-
-    // For extra searching.
-    keywords: ['tweet', 'twitter'],
-
-    // Determine if a given URL is a match and return url data.
-    parseUrl: (text: string) => {
-        const match =
-            /^https:\/\/(twitter|x)\.com\/(#!\/)?(\w+)\/status(es)*\/(\d+)/.exec(
-                text,
+    </div>
+            ) : null}
+    </>
+        );
+      }
+    
+    function getMouseInfo(event: MouseEvent): {
+        codeDOMNode: HTMLElement | null;
+        isOutside: boolean;
+    } {
+        const target = event.target;
+    
+        if (target && target instanceof HTMLElement) {
+            const codeDOMNode = target.closest<HTMLElement>(
+                'code.PlaygroundEditorTheme__code',
             );
-
-        if (match != null) {
-            return {
-                id: match[5],
-                url: match[1],
-            };
-        }
-
-        return null;
-    },
-
-    type: 'tweet',
-};
-
-export const FigmaEmbedConfig: PlaygroundEmbedConfig = {
-    contentName: 'Figma Document',
-
-    exampleUrl: 'https://www.figma.com/file/LKQ4FJ4bTnCSjedbRpk931/Sample-File',
-
-    icon: <i className="icon figma" />,
-
-  insertNode: (editor: LexicalEditor, result: EmbedMatchResult) => {
-        editor.dispatchCommand(INSERT_FIGMA_COMMAND, result.id);
-    },
-
-    keywords: ['figma', 'figma.com', 'mock-up'],
-
-    // Determine if a given URL is a match and return url data.
-    parseUrl: (text: string) => {
-        const match =
-            /https:\/\/([\w.-]+\.)?figma.com\/(file|proto)\/([0-9a-zA-Z]{22,128})(?:\/.*)?$/.exec(
-                text,
+            const isOutside = !(
+                codeDOMNode ||
+                target.closest<HTMLElement>('div.code-action-menu-container')
             );
-
-        if (match != null) {
-            return {
-                id: match[3],
-                url: match[0],
-            };
+    
+            return { codeDOMNode, isOutside };
+        } else {
+            return { codeDOMNode: null, isOutside: true };
         }
-
-        return null;
-    },
-
-    type: 'figma',
-};
-
-export const EmbedConfigs = [
-    TwitterEmbedConfig,
-    YoutubeEmbedConfig,
-    FigmaEmbedConfig,
-];
-
-function AutoEmbedMenuItem({
-    index,
-    isSelected,
-    onClick,
-    onMouseEnter,
-    option,
-}: {
-    index: number;
-    isSelected: boolean;
-    onClick: () => void;
-    onMouseEnter: () => void;
-    option: AutoEmbedOption;
-}) {
-    let className = 'item';
-    if (isSelected) {
-        className += ' selected';
     }
-    return (
-        <li
-      key= { option.key }
-    tabIndex = {- 1
-}
-className = { className }
-ref = { option.setRefElement }
-role = "option"
-aria - selected={ isSelected }
-id = { 'typeahead-item-' + index }
-onMouseEnter = { onMouseEnter }
-onClick = { onClick } >
-    <span className="text" > { option.title } < /span>
-        < /li>
-  );
-}
-
-function AutoEmbedMenu({
-    options,
-    selectedItemIndex,
-    onOptionClick,
-    onOptionMouseEnter,
-}: {
-    selectedItemIndex: number | null;
-    onOptionClick: (option: AutoEmbedOption, index: number) => void;
-    onOptionMouseEnter: (index: number) => void;
-    options: Array<AutoEmbedOption>;
-}) {
-    return (
-        <div className= "typeahead-popover" >
-        <ul>
-        {
-            options.map((option: AutoEmbedOption, i: number) => (
-                <AutoEmbedMenuItem
-            index= { i }
-            isSelected = { selectedItemIndex === i}
-    onClick = {() => onOptionClick(option, i)
-}
-onMouseEnter = {() => onOptionMouseEnter(i)}
-key = { option.key }
-option = { option }
+    
+    export function CodeActionMenuPlugin({
+        anchorElem = document.body,
+    }: {
+        anchorElem?: HTMLElement;
+    }): React.ReactPortal | null {
+        return createPortal(
+            <CodeActionMenuContainer anchorElem={ anchorElem } />,
+            anchorElem,
+        );
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    const URL_REGEX =
+        /((https?:\/\/(www\.)?)|(www\.))[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&//=]*)/;
+    
+    const EMAIL_REGEX =
+        /(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+    
+    const MATCHERS = [
+        createLinkMatcherWithRegExp(URL_REGEX, (text) => {
+            return text.startsWith('http') ? text : `https://${text}`;
+        }),
+        createLinkMatcherWithRegExp(EMAIL_REGEX, (text) => {
+            return `mailto:${text}`;
+        }),
+    ];
+    
+    export function LexicalAutoLinkPlugin(): JSX.Element {
+        return <AutoLinkPlugin matchers={ MATCHERS } />;
+    }
+    
+    
+    
+    
+    
+    
+    
+    interface PlaygroundEmbedConfig extends EmbedConfig {
+        // Human readable name of the embeded content e.g. Tweet or Google Map.
+        contentName: string;
+    
+        // Icon for display.
+        icon?: JSX.Element;
+    
+        // An example of a matching url https://twitter.com/jack/status/20
+        exampleUrl: string;
+    
+        // For extra searching.
+        keywords: Array<string>;
+    
+        // Embed a Figma Project.
+        description?: string;
+    }
+    
+    export const YoutubeEmbedConfig: PlaygroundEmbedConfig = {
+        contentName: 'Youtube Video',
+    
+        exampleUrl: 'https://www.youtube.com/watch?v=jNQXAC9IVRw',
+    
+        // Icon for display.
+        icon: <i className="icon youtube" />,
+    
+      insertNode: (editor: LexicalEditor, result: EmbedMatchResult) => {
+            editor.dispatchCommand(INSERT_YOUTUBE_COMMAND, result.id);
+        },
+    
+        keywords: ['youtube', 'video'],
+    
+        // Determine if a given URL is a match and return url data.
+        parseUrl: async (url: string) => {
+            const match =
+                /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/.exec(url);
+    
+            const id = match ? (match?.[2].length === 11 ? match[2] : null) : null;
+    
+            if (id != null) {
+                return {
+                    id,
+                    url,
+                };
+            }
+    
+            return null;
+        },
+    
+        type: 'youtube-video',
+    };
+    
+    export const TwitterEmbedConfig: PlaygroundEmbedConfig = {
+        // e.g. Tweet or Google Map.
+        contentName: 'Tweet',
+    
+        exampleUrl: 'https://twitter.com/jack/status/20',
+    
+        // Icon for display.
+        icon: <i className="icon tweet" />,
+    
+      // Create the Lexical embed node from the url data.
+      insertNode: (editor: LexicalEditor, result: EmbedMatchResult) => {
+            editor.dispatchCommand(INSERT_TWEET_COMMAND, result.id);
+        },
+    
+        // For extra searching.
+        keywords: ['tweet', 'twitter'],
+    
+        // Determine if a given URL is a match and return url data.
+        parseUrl: (text: string) => {
+            const match =
+                /^https:\/\/(twitter|x)\.com\/(#!\/)?(\w+)\/status(es)*\/(\d+)/.exec(
+                    text,
+                );
+    
+            if (match != null) {
+                return {
+                    id: match[5],
+                    url: match[1],
+                };
+            }
+    
+            return null;
+        },
+    
+        type: 'tweet',
+    };
+    
+    export const FigmaEmbedConfig: PlaygroundEmbedConfig = {
+        contentName: 'Figma Document',
+    
+        exampleUrl: 'https://www.figma.com/file/LKQ4FJ4bTnCSjedbRpk931/Sample-File',
+    
+        icon: <i className="icon figma" />,
+    
+      insertNode: (editor: LexicalEditor, result: EmbedMatchResult) => {
+            editor.dispatchCommand(INSERT_FIGMA_COMMAND, result.id);
+        },
+    
+        keywords: ['figma', 'figma.com', 'mock-up'],
+    
+        // Determine if a given URL is a match and return url data.
+        parseUrl: (text: string) => {
+            const match =
+                /https:\/\/([\w.-]+\.)?figma.com\/(file|proto)\/([0-9a-zA-Z]{22,128})(?:\/.*)?$/.exec(
+                    text,
+                );
+    
+            if (match != null) {
+                return {
+                    id: match[3],
+                    url: match[0],
+                };
+            }
+    
+            return null;
+        },
+    
+        type: 'figma',
+    };
+    
+    export const EmbedConfigs = [
+        TwitterEmbedConfig,
+        YoutubeEmbedConfig,
+        FigmaEmbedConfig,
+    ];
+    
+    function AutoEmbedMenuItem({
+        index,
+        isSelected,
+        onClick,
+        onMouseEnter,
+        option,
+    }: {
+        index: number;
+        isSelected: boolean;
+        onClick: () => void;
+        onMouseEnter: () => void;
+        option: AutoEmbedOption;
+    }) {
+        let className = 'item';
+        if (isSelected) {
+            className += ' selected';
+        }
+        return (
+            <li
+          key= { option.key }
+        tabIndex = {- 1
+    }
+    className = { className }
+    ref = { option.setRefElement }
+    role = "option"
+    aria - selected={ isSelected }
+    id = { 'typeahead-item-' + index }
+    onMouseEnter = { onMouseEnter }
+    onClick = { onClick } >
+        <span className="text" > { option.title } < /span>
+            < /li>
+      );
+    }
+    
+    function AutoEmbedMenu({
+        options,
+        selectedItemIndex,
+        onOptionClick,
+        onOptionMouseEnter,
+    }: {
+        selectedItemIndex: number | null;
+        onOptionClick: (option: AutoEmbedOption, index: number) => void;
+        onOptionMouseEnter: (index: number) => void;
+        options: Array<AutoEmbedOption>;
+    }) {
+        return (
+            <div className= "typeahead-popover" >
+            <ul>
+            {
+                options.map((option: AutoEmbedOption, i: number) => (
+                    <AutoEmbedMenuItem
+                index= { i }
+                isSelected = { selectedItemIndex === i}
+        onClick = {() => onOptionClick(option, i)
+    }
+    onMouseEnter = {() => onOptionMouseEnter(i)}
+    key = { option.key }
+    option = { option }
+        />
+            ))}
+    </ul>
+        < /div>
+      );
+    }
+    
+    const debounce = (callback: (text: string) => void, delay: number) => {
+        let timeoutId: number;
+        return (text: string) => {
+            window.clearTimeout(timeoutId);
+            timeoutId = window.setTimeout(() => {
+                callback(text);
+            }, delay);
+        };
+    };
+    
+    export function AutoEmbedDialog({
+        embedConfig,
+        onClose,
+    }: {
+        embedConfig: PlaygroundEmbedConfig;
+        onClose: () => void;
+    }): JSX.Element {
+        const [text, setText] = useState('');
+        const [editor] = useLexicalComposerContext();
+        const [embedResult, setEmbedResult] = useState<EmbedMatchResult | null>(null);
+    
+        const validateText = useMemo(
+            () =>
+                debounce((inputText: string) => {
+                    const urlMatch = URL_MATCHER.exec(inputText);
+                    if (embedConfig != null && inputText != null && urlMatch != null) {
+                        Promise.resolve(embedConfig.parseUrl(inputText)).then(
+                            (parseResult) => {
+                                setEmbedResult(parseResult);
+                            },
+                        );
+                    } else if (embedResult != null) {
+                        setEmbedResult(null);
+                    }
+                }, 200),
+            [embedConfig, embedResult],
+        );
+    
+        const onClick = () => {
+            if (embedResult != null) {
+                embedConfig.insertNode(editor, embedResult);
+                onClose();
+            }
+        };
+    
+        return (
+            <div style= {{ width: '600px' }
+    }>
+        <div className="Input__wrapper" >
+            <input
+              type="text"
+    className = "Input__input"
+    placeholder = { embedConfig.exampleUrl }
+    value = { text }
+    data - test - id={ `${embedConfig.type}-embed-modal-url` }
+    onChange = {(e) => {
+        const { value } = e.target;
+        setText(value);
+        validateText(value);
+    }}
     />
-        ))}
-</ul>
-    < /div>
-  );
-}
-
-const debounce = (callback: (text: string) => void, delay: number) => {
-    let timeoutId: number;
-    return (text: string) => {
-        window.clearTimeout(timeoutId);
-        timeoutId = window.setTimeout(() => {
-            callback(text);
-        }, delay);
+        < /div>
+        < DialogActions >
+        <Button
+              disabled={ !embedResult }
+    onClick = { onClick }
+    data - test - id={ `${embedConfig.type}-embed-modal-submit-btn` }>
+        Embed
+        < /Button>
+        < /DialogActions>
+        < /div>
+      );
+    }
+    
+    export function AutoEmbedPlugin(): JSX.Element {
+        const [modal, showModal] = useModal();
+    
+        const openEmbedModal = (embedConfig: PlaygroundEmbedConfig) => {
+            showModal(`Embed ${embedConfig.contentName}`, (onClose) => (
+                <AutoEmbedDialog embedConfig= { embedConfig } onClose = { onClose } />
+        ));
+        };
+    
+        const getMenuOptions = (
+            activeEmbedConfig: PlaygroundEmbedConfig,
+            embedFn: () => void,
+            dismissFn: () => void,
+        ) => {
+            return [
+                new AutoEmbedOption('Dismiss', {
+                    onSelect: dismissFn,
+                }),
+                new AutoEmbedOption(`Embed ${activeEmbedConfig.contentName}`, {
+                    onSelect: embedFn,
+                }),
+            ];
+        };
+    
+        return (
+            <>
+            { modal }
+            < LexicalAutoEmbedPlugin<PlaygroundEmbedConfig>
+            embedConfigs = { EmbedConfigs }
+        onOpenEmbedModalForConfig = { openEmbedModal }
+        getMenuOptions = { getMenuOptions }
+        menuRenderFn = {(
+            anchorElementRef,
+            { selectedIndex, options, selectOptionAndCleanUp, setHighlightedIndex },
+        ) =>
+        anchorElementRef.current
+            ? ReactDOM.createPortal(
+                <div
+                      className="typeahead-popover auto-embed-menu"
+                      style = {{
+                marginLeft: anchorElementRef.current.style.width,
+                width: 200,
+            }}>
+                <AutoEmbedMenu
+                        options={ options }
+    selectedItemIndex = { selectedIndex }
+    onOptionClick = {(option: AutoEmbedOption, index: number) => {
+        setHighlightedIndex(index);
+        selectOptionAndCleanUp(option);
+    }}
+    onOptionMouseEnter = {(index: number) => {
+        setHighlightedIndex(index);
+    }}
+    />
+        < /div>,
+    anchorElementRef.current,
+                  )
+                : null
+            }
+    />
+        < />
+      );
+    }
+    
+    
+    
+    
+    
+    
+    type SearchPromise = {
+        dismiss: () => void;
+        promise: Promise<null | string>;
     };
-};
-
-export function AutoEmbedDialog({
-    embedConfig,
-    onClose,
-}: {
-    embedConfig: PlaygroundEmbedConfig;
-    onClose: () => void;
-}): JSX.Element {
-    const [text, setText] = useState('');
-    const [editor] = useLexicalComposerContext();
-    const [embedResult, setEmbedResult] = useState<EmbedMatchResult | null>(null);
-
-    const validateText = useMemo(
-        () =>
-            debounce((inputText: string) => {
-                const urlMatch = URL_MATCHER.exec(inputText);
-                if (embedConfig != null && inputText != null && urlMatch != null) {
-                    Promise.resolve(embedConfig.parseUrl(inputText)).then(
-                        (parseResult) => {
-                            setEmbedResult(parseResult);
-                        },
-                    );
-                } else if (embedResult != null) {
-                    setEmbedResult(null);
+    
+    export const uuid = Math.random()
+        .toString(36)
+        .replace(/[^a-z]+/g, '')
+        .substr(0, 5);
+    
+    // TODO lookup should be custom
+    function $search(selection: null | BaseSelection): [boolean, string] {
+        if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+            return [false, ''];
+        }
+        const node = selection.getNodes()[0];
+        const anchor = selection.anchor;
+        // Check siblings?
+        if (!$isTextNode(node) || !node.isSimpleText() || !$isAtNodeEnd(anchor)) {
+            return [false, ''];
+        }
+        const word = [];
+        const text = node.getTextContent();
+        let i = node.getTextContentSize();
+        let c;
+        while (i-- && i >= 0 && (c = text[i]) !== ' ') {
+            word.push(c);
+        }
+        if (word.length === 0) {
+            return [false, ''];
+        }
+        return [true, word.reverse().join('')];
+    }
+    
+    // TODO query should be custom
+    function useQuery(): (searchText: string) => SearchPromise {
+        return useCallback((searchText: string) => {
+            const server = new AutocompleteServer();
+            console.time('query');
+            const response = server.query(searchText);
+            console.timeEnd('query');
+            return response;
+        }, []);
+    }
+    
+    export function AutocompletePlugin(): JSX.Element | null {
+        const [editor] = useLexicalComposerContext();
+        const [, setSuggestion] = useSharedAutocompleteContext();
+        const query = useQuery();
+    
+        useEffect(() => {
+            let autocompleteNodeKey: null | NodeKey = null;
+            let lastMatch: null | string = null;
+            let lastSuggestion: null | string = null;
+            let searchPromise: null | SearchPromise = null;
+            function $clearSuggestion() {
+                const autocompleteNode =
+                    autocompleteNodeKey !== null
+                        ? $getNodeByKey(autocompleteNodeKey)
+                        : null;
+                if (autocompleteNode !== null && autocompleteNode.isAttached()) {
+                    autocompleteNode.remove();
+                    autocompleteNodeKey = null;
                 }
-            }, 200),
-        [embedConfig, embedResult],
-    );
-
-    const onClick = () => {
-        if (embedResult != null) {
-            embedConfig.insertNode(editor, embedResult);
-            onClose();
-        }
-    };
-
-    return (
-        <div style= {{ width: '600px' }
-}>
-    <div className="Input__wrapper" >
-        <input
-          type="text"
-className = "Input__input"
-placeholder = { embedConfig.exampleUrl }
-value = { text }
-data - test - id={ `${embedConfig.type}-embed-modal-url` }
-onChange = {(e) => {
-    const { value } = e.target;
-    setText(value);
-    validateText(value);
-}}
-/>
-    < /div>
-    < DialogActions >
-    <Button
-          disabled={ !embedResult }
-onClick = { onClick }
-data - test - id={ `${embedConfig.type}-embed-modal-submit-btn` }>
-    Embed
-    < /Button>
-    < /DialogActions>
-    < /div>
-  );
-}
-
-export function AutoEmbedPlugin(): JSX.Element {
-    const [modal, showModal] = useModal();
-
-    const openEmbedModal = (embedConfig: PlaygroundEmbedConfig) => {
-        showModal(`Embed ${embedConfig.contentName}`, (onClose) => (
-            <AutoEmbedDialog embedConfig= { embedConfig } onClose = { onClose } />
-    ));
-    };
-
-    const getMenuOptions = (
-        activeEmbedConfig: PlaygroundEmbedConfig,
-        embedFn: () => void,
-        dismissFn: () => void,
-    ) => {
-        return [
-            new AutoEmbedOption('Dismiss', {
-                onSelect: dismissFn,
-            }),
-            new AutoEmbedOption(`Embed ${activeEmbedConfig.contentName}`, {
-                onSelect: embedFn,
-            }),
-        ];
-    };
-
-    return (
-        <>
-        { modal }
-        < LexicalAutoEmbedPlugin<PlaygroundEmbedConfig>
-        embedConfigs = { EmbedConfigs }
-    onOpenEmbedModalForConfig = { openEmbedModal }
-    getMenuOptions = { getMenuOptions }
-    menuRenderFn = {(
-        anchorElementRef,
-        { selectedIndex, options, selectOptionAndCleanUp, setHighlightedIndex },
-    ) =>
-    anchorElementRef.current
-        ? ReactDOM.createPortal(
-            <div
-                  className="typeahead-popover auto-embed-menu"
-                  style = {{
-            marginLeft: anchorElementRef.current.style.width,
-            width: 200,
-        }}>
-            <AutoEmbedMenu
-                    options={ options }
-selectedItemIndex = { selectedIndex }
-onOptionClick = {(option: AutoEmbedOption, index: number) => {
-    setHighlightedIndex(index);
-    selectOptionAndCleanUp(option);
-}}
-onOptionMouseEnter = {(index: number) => {
-    setHighlightedIndex(index);
-}}
-/>
-    < /div>,
-anchorElementRef.current,
-              )
-            : null
-        }
-/>
-    < />
-  );
-}
-
-
-
-
-
-
-type SearchPromise = {
-    dismiss: () => void;
-    promise: Promise<null | string>;
-};
-
-export const uuid = Math.random()
-    .toString(36)
-    .replace(/[^a-z]+/g, '')
-    .substr(0, 5);
-
-// TODO lookup should be custom
-function $search(selection: null | BaseSelection): [boolean, string] {
-    if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
-        return [false, ''];
-    }
-    const node = selection.getNodes()[0];
-    const anchor = selection.anchor;
-    // Check siblings?
-    if (!$isTextNode(node) || !node.isSimpleText() || !$isAtNodeEnd(anchor)) {
-        return [false, ''];
-    }
-    const word = [];
-    const text = node.getTextContent();
-    let i = node.getTextContentSize();
-    let c;
-    while (i-- && i >= 0 && (c = text[i]) !== ' ') {
-        word.push(c);
-    }
-    if (word.length === 0) {
-        return [false, ''];
-    }
-    return [true, word.reverse().join('')];
-}
-
-// TODO query should be custom
-function useQuery(): (searchText: string) => SearchPromise {
-    return useCallback((searchText: string) => {
-        const server = new AutocompleteServer();
-        console.time('query');
-        const response = server.query(searchText);
-        console.timeEnd('query');
-        return response;
-    }, []);
-}
-
-export function AutocompletePlugin(): JSX.Element | null {
-    const [editor] = useLexicalComposerContext();
-    const [, setSuggestion] = useSharedAutocompleteContext();
-    const query = useQuery();
-
-    useEffect(() => {
-        let autocompleteNodeKey: null | NodeKey = null;
-        let lastMatch: null | string = null;
-        let lastSuggestion: null | string = null;
-        let searchPromise: null | SearchPromise = null;
-        function $clearSuggestion() {
-            const autocompleteNode =
-                autocompleteNodeKey !== null
-                    ? $getNodeByKey(autocompleteNodeKey)
-                    : null;
-            if (autocompleteNode !== null && autocompleteNode.isAttached()) {
-                autocompleteNode.remove();
-                autocompleteNodeKey = null;
+                if (searchPromise !== null) {
+                    searchPromise.dismiss();
+                    searchPromise = null;
+                }
+                lastMatch = null;
+                lastSuggestion = null;
+                setSuggestion(null);
             }
-            if (searchPromise !== null) {
-                searchPromise.dismiss();
-                searchPromise = null;
+            function updateAsyncSuggestion(
+                refSearchPromise: SearchPromise,
+                newSuggestion: null | string,
+            ) {
+                if (searchPromise !== refSearchPromise || newSuggestion === null) {
+                    // Outdated or no suggestion
+                    return;
+                }
+                editor.update(
+                    () => {
+                        const selection = $getSelection();
+                        const [hasMatch, match] = $search(selection);
+                        if (
+                            !hasMatch ||
+                            match !== lastMatch ||
+                            !$isRangeSelection(selection)
+                        ) {
+                            // Outdated
+                            return;
+                        }
+                        const selectionCopy = selection.clone();
+                        const node = $createAutocompleteNode(uuid);
+                        autocompleteNodeKey = node.getKey();
+                        selection.insertNodes([node]);
+                        $setSelection(selectionCopy);
+                        lastSuggestion = newSuggestion;
+                        setSuggestion(newSuggestion);
+                    },
+                    { tag: 'history-merge' },
+                );
             }
-            lastMatch = null;
-            lastSuggestion = null;
-            setSuggestion(null);
-        }
-        function updateAsyncSuggestion(
-            refSearchPromise: SearchPromise,
-            newSuggestion: null | string,
-        ) {
-            if (searchPromise !== refSearchPromise || newSuggestion === null) {
-                // Outdated or no suggestion
-                return;
+    
+            function handleAutocompleteNodeTransform(node: AutocompleteNode) {
+                const key = node.getKey();
+                if (node.__uuid === uuid && key !== autocompleteNodeKey) {
+                    // Max one Autocomplete node per session
+                    $clearSuggestion();
+                }
             }
-            editor.update(
-                () => {
+            function handleUpdate() {
+                editor.update(() => {
                     const selection = $getSelection();
                     const [hasMatch, match] = $search(selection);
-                    if (
-                        !hasMatch ||
-                        match !== lastMatch ||
-                        !$isRangeSelection(selection)
-                    ) {
-                        // Outdated
+                    if (!hasMatch) {
+                        $clearSuggestion();
                         return;
                     }
-                    const selectionCopy = selection.clone();
-                    const node = $createAutocompleteNode(uuid);
-                    autocompleteNodeKey = node.getKey();
-                    selection.insertNodes([node]);
-                    $setSelection(selectionCopy);
-                    lastSuggestion = newSuggestion;
-                    setSuggestion(newSuggestion);
-                },
-                { tag: 'history-merge' },
-            );
-        }
-
-        function handleAutocompleteNodeTransform(node: AutocompleteNode) {
-            const key = node.getKey();
-            if (node.__uuid === uuid && key !== autocompleteNodeKey) {
-                // Max one Autocomplete node per session
-                $clearSuggestion();
-            }
-        }
-        function handleUpdate() {
-            editor.update(() => {
-                const selection = $getSelection();
-                const [hasMatch, match] = $search(selection);
-                if (!hasMatch) {
+                    if (match === lastMatch) {
+                        return;
+                    }
                     $clearSuggestion();
-                    return;
+                    searchPromise = query(match);
+                    searchPromise.promise
+                        .then((newSuggestion) => {
+                            if (searchPromise !== null) {
+                                updateAsyncSuggestion(searchPromise, newSuggestion);
+                            }
+                        })
+                        .catch((e) => {
+                            console.error(e);
+                        });
+                    lastMatch = match;
+                });
+            }
+            function $handleAutocompleteIntent(): boolean {
+                if (lastSuggestion === null || autocompleteNodeKey === null) {
+                    return false;
                 }
-                if (match === lastMatch) {
-                    return;
+                const autocompleteNode = $getNodeByKey(autocompleteNodeKey);
+                if (autocompleteNode === null) {
+                    return false;
                 }
+                const textNode = $createTextNode(lastSuggestion);
+                autocompleteNode.replace(textNode);
+                textNode.selectNext();
                 $clearSuggestion();
-                searchPromise = query(match);
-                searchPromise.promise
-                    .then((newSuggestion) => {
-                        if (searchPromise !== null) {
-                            updateAsyncSuggestion(searchPromise, newSuggestion);
-                        }
-                    })
-                    .catch((e) => {
-                        console.error(e);
-                    });
-                lastMatch = match;
-            });
-        }
-        function $handleAutocompleteIntent(): boolean {
-            if (lastSuggestion === null || autocompleteNodeKey === null) {
-                return false;
-            }
-            const autocompleteNode = $getNodeByKey(autocompleteNodeKey);
-            if (autocompleteNode === null) {
-                return false;
-            }
-            const textNode = $createTextNode(lastSuggestion);
-            autocompleteNode.replace(textNode);
-            textNode.selectNext();
-            $clearSuggestion();
-            return true;
-        }
-        function $handleKeypressCommand(e: Event) {
-            if ($handleAutocompleteIntent()) {
-                e.preventDefault();
                 return true;
             }
-            return false;
-        }
-        function handleSwipeRight(_force: number, e: TouchEvent) {
-            editor.update(() => {
+            function $handleKeypressCommand(e: Event) {
                 if ($handleAutocompleteIntent()) {
                     e.preventDefault();
-                }
-            });
-        }
-        function unmountSuggestion() {
-            editor.update(() => {
-                $clearSuggestion();
-            });
-        }
-
-        const rootElem = editor.getRootElement();
-
-        return mergeRegister(
-            editor.registerNodeTransform(
-                AutocompleteNode,
-                handleAutocompleteNodeTransform,
-            ),
-            editor.registerUpdateListener(handleUpdate),
-            editor.registerCommand(
-                KEY_TAB_COMMAND,
-                $handleKeypressCommand,
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand(
-                KEY_ARROW_RIGHT_COMMAND,
-                $handleKeypressCommand,
-                COMMAND_PRIORITY_LOW,
-            ),
-            ...(rootElem !== null
-                ? [addSwipeRightListener(rootElem, handleSwipeRight)]
-                : []),
-            unmountSuggestion,
-        );
-    }, [editor, query, setSuggestion]);
-
-    return null;
-}
-
-/*
- * Simulate an asynchronous autocomplete server (typical in more common use cases like GMail where
- * the data is not static).
- */
-class AutocompleteServer {
-    DATABASE = DICTIONARY_EN;
-    LATENCY = 200;
-
-    query = (searchText: string): SearchPromise => {
-        let isDismissed = false;
-
-        const dismiss = () => {
-            isDismissed = true;
-        };
-        const promise: Promise<null | string> = new Promise((resolve, reject) => {
-            setTimeout(() => {
-                if (isDismissed) {
-                    // TODO cache result
-                    return reject('Dismissed');
-                }
-                const searchTextLength = searchText.length;
-                if (searchText === '' || searchTextLength < 4) {
-                    return resolve(null);
-                }
-                const char0 = searchText.charCodeAt(0);
-                const isCapitalized = char0 >= 65 && char0 <= 90;
-                const caseInsensitiveSearchText = isCapitalized
-                    ? String.fromCharCode(char0 + 32) + searchText.substring(1)
-                    : searchText;
-                const match = this.DATABASE.find(
-                    (DICTIONARY_ENWord) =>
-                        DICTIONARY_ENWord.startsWith(caseInsensitiveSearchText) ?? null,
-                );
-                if (match === undefined) {
-                    return resolve(null);
-                }
-                const matchCapitalized = isCapitalized
-                    ? String.fromCharCode(match.charCodeAt(0) - 32) + match.substring(1)
-                    : match;
-                const autocompleteChunk = matchCapitalized.substring(searchTextLength);
-                if (autocompleteChunk === '') {
-                    return resolve(null);
-                }
-                return resolve(autocompleteChunk);
-            }, this.LATENCY);
-        });
-
-        return {
-            dismiss,
-            promise,
-        };
-    };
-}
-
-
-export function CodeHighlightPlugin(): JSX.Element | null {
-    const [editor] = useLexicalComposerContext();
-
-    useEffect(() => {
-        return registerCodeHighlighting(editor);
-    }, [editor]);
-
-    return null;
-}
-
-
-
-type SerializedCollapsibleContainerNode = Spread<
-    {
-        open: boolean;
-    },
-    SerializedElementNode
->;
-
-export function convertDetailsElement(
-    domNode: HTMLDetailsElement,
-): DOMConversionOutput | null {
-    const isOpen = domNode.open !== undefined ? domNode.open : true;
-    const node = $createCollapsibleContainerNode(isOpen);
-    return {
-        node,
-    };
-}
-
-export class CollapsibleContainerNode extends ElementNode {
-    __open: boolean;
-
-    constructor(open: boolean, key?: NodeKey) {
-        super(key);
-        this.__open = open;
-    }
-
-    static getType(): string {
-        return 'collapsible-container';
-    }
-
-    static clone(node: CollapsibleContainerNode): CollapsibleContainerNode {
-        return new CollapsibleContainerNode(node.__open, node.__key);
-    }
-
-    createDOM(config: EditorConfig, editor: LexicalEditor): HTMLElement {
-        const dom = document.createElement('details');
-        dom.classList.add('Collapsible__container');
-        dom.open = this.__open;
-        dom.addEventListener('toggle', () => {
-            const open = editor.getEditorState().read(() => this.getOpen());
-            if (open !== dom.open) {
-                editor.update(() => this.toggleOpen());
-            }
-        });
-        return dom;
-    }
-
-    updateDOM(
-        prevNode: CollapsibleContainerNode,
-        dom: HTMLDetailsElement,
-    ): boolean {
-        if (prevNode.__open !== this.__open) {
-            dom.open = this.__open;
-        }
-
-        return false;
-    }
-
-    static importDOM(): DOMConversionMap<HTMLDetailsElement> | null {
-        return {
-            details: (domNode: HTMLDetailsElement) => {
-                return {
-                    conversion: convertDetailsElement,
-                    priority: 1,
-                };
-            },
-        };
-    }
-
-    static importJSON(
-        serializedNode: SerializedCollapsibleContainerNode,
-    ): CollapsibleContainerNode {
-        const node = $createCollapsibleContainerNode(serializedNode.open);
-        return node;
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('details');
-        element.setAttribute('open', this.__open.toString());
-        return { element };
-    }
-
-    exportJSON(): SerializedCollapsibleContainerNode {
-        return {
-            ...super.exportJSON(),
-            open: this.__open,
-            type: 'collapsible-container',
-            version: 1,
-        };
-    }
-
-    setOpen(open: boolean): void {
-        const writable = this.getWritable();
-        writable.__open = open;
-    }
-
-    getOpen(): boolean {
-        return this.getLatest().__open;
-    }
-
-    toggleOpen(): void {
-        this.setOpen(!this.getOpen());
-    }
-}
-
-export function $createCollapsibleContainerNode(
-    isOpen: boolean,
-): CollapsibleContainerNode {
-    return new CollapsibleContainerNode(isOpen);
-}
-
-export function $isCollapsibleContainerNode(
-    node: LexicalNode | null | undefined,
-): node is CollapsibleContainerNode {
-    return node instanceof CollapsibleContainerNode;
-}
-
-
-type SerializedCollapsibleContentNode = SerializedElementNode;
-
-export function convertCollapsibleContentElement(
-    domNode: HTMLElement,
-): DOMConversionOutput | null {
-    const node = $createCollapsibleContentNode();
-    return {
-        node,
-    };
-}
-
-export class CollapsibleContentNode extends ElementNode {
-    static getType(): string {
-        return 'collapsible-content';
-    }
-
-    static clone(node: CollapsibleContentNode): CollapsibleContentNode {
-        return new CollapsibleContentNode(node.__key);
-    }
-
-    createDOM(config: EditorConfig): HTMLElement {
-        const dom = document.createElement('div');
-        dom.classList.add('Collapsible__content');
-        return dom;
-    }
-
-    updateDOM(prevNode: CollapsibleContentNode, dom: HTMLElement): boolean {
-        return false;
-    }
-
-    static importDOM(): DOMConversionMap | null {
-        return {
-            div: (domNode: HTMLElement) => {
-                if (!domNode.hasAttribute('data-lexical-collapsible-content')) {
-                    return null;
-                }
-                return {
-                    conversion: convertCollapsibleContentElement,
-                    priority: 2,
-                };
-            },
-        };
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('div');
-        element.setAttribute('data-lexical-collapsible-content', 'true');
-        return { element };
-    }
-
-    static importJSON(
-        serializedNode: SerializedCollapsibleContentNode,
-    ): CollapsibleContentNode {
-        return $createCollapsibleContentNode();
-    }
-
-    isShadowRoot(): boolean {
-        return true;
-    }
-
-    exportJSON(): SerializedCollapsibleContentNode {
-        return {
-            ...super.exportJSON(),
-            type: 'collapsible-content',
-            version: 1,
-        };
-    }
-}
-
-export function $createCollapsibleContentNode(): CollapsibleContentNode {
-    return new CollapsibleContentNode();
-}
-
-export function $isCollapsibleContentNode(
-    node: LexicalNode | null | undefined,
-): node is CollapsibleContentNode {
-    return node instanceof CollapsibleContentNode;
-}
-
-type SerializedCollapsibleTitleNode = SerializedElementNode;
-
-export function convertSummaryElement(
-    domNode: HTMLElement,
-): DOMConversionOutput | null {
-    const node = $createCollapsibleTitleNode();
-    return {
-        node,
-    };
-}
-
-export class CollapsibleTitleNode extends ElementNode {
-    static getType(): string {
-        return 'collapsible-title';
-    }
-
-    static clone(node: CollapsibleTitleNode): CollapsibleTitleNode {
-        return new CollapsibleTitleNode(node.__key);
-    }
-
-    createDOM(config: EditorConfig, editor: LexicalEditor): HTMLElement {
-        const dom = document.createElement('summary');
-        dom.classList.add('Collapsible__title');
-        return dom;
-    }
-
-    updateDOM(prevNode: CollapsibleTitleNode, dom: HTMLElement): boolean {
-        return false;
-    }
-
-    static importDOM(): DOMConversionMap | null {
-        return {
-            summary: (domNode: HTMLElement) => {
-                return {
-                    conversion: convertSummaryElement,
-                    priority: 1,
-                };
-            },
-        };
-    }
-
-    static importJSON(
-        serializedNode: SerializedCollapsibleTitleNode,
-    ): CollapsibleTitleNode {
-        return $createCollapsibleTitleNode();
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('summary');
-        return { element };
-    }
-
-    exportJSON(): SerializedCollapsibleTitleNode {
-        return {
-            ...super.exportJSON(),
-            type: 'collapsible-title',
-            version: 1,
-        };
-    }
-
-    collapseAtStart(_selection: RangeSelection): boolean {
-        this.getParentOrThrow().insertBefore(this);
-        return true;
-    }
-
-    insertNewAfter(_: RangeSelection, restoreSelection = true): ElementNode {
-        const containerNode = this.getParentOrThrow();
-
-        if (!$isCollapsibleContainerNode(containerNode)) {
-            throw new Error(
-                'CollapsibleTitleNode expects to be child of CollapsibleContainerNode',
-            );
-        }
-
-        if (containerNode.getOpen()) {
-            const contentNode = this.getNextSibling();
-            if (!$isCollapsibleContentNode(contentNode)) {
-                throw new Error(
-                    'CollapsibleTitleNode expects to have CollapsibleContentNode sibling',
-                );
-            }
-
-            const firstChild = contentNode.getFirstChild();
-            if ($isElementNode(firstChild)) {
-                return firstChild;
-            } else {
-                const paragraph = $createParagraphNode();
-                contentNode.append(paragraph);
-                return paragraph;
-            }
-        } else {
-            const paragraph = $createParagraphNode();
-            containerNode.insertAfter(paragraph, restoreSelection);
-            return paragraph;
-        }
-    }
-}
-
-export function $createCollapsibleTitleNode(): CollapsibleTitleNode {
-    return new CollapsibleTitleNode();
-}
-
-export function $isCollapsibleTitleNode(
-    node: LexicalNode | null | undefined,
-): node is CollapsibleTitleNode {
-    return node instanceof CollapsibleTitleNode;
-}
-
-
-
-
-
-
-export const INSERT_COLLAPSIBLE_COMMAND = createCommand<void>();
-export const TOGGLE_COLLAPSIBLE_COMMAND = createCommand<NodeKey>();
-
-export function CollapsiblePlugin(): null {
-    const [editor] = useLexicalComposerContext();
-
-    useEffect(() => {
-        if (
-            !editor.hasNodes([
-                CollapsibleContainerNode,
-                CollapsibleTitleNode,
-                CollapsibleContentNode,
-            ])
-        ) {
-            throw new Error(
-                'CollapsiblePlugin: CollapsibleContainerNode, CollapsibleTitleNode, or CollapsibleContentNode not registered on editor',
-            );
-        }
-
-        const onEscapeUp = () => {
-            const selection = $getSelection();
-            if (
-                $isRangeSelection(selection) &&
-                selection.isCollapsed() &&
-                selection.anchor.offset === 0
-            ) {
-                const container = $findMatchingParent(
-                    selection.anchor.getNode(),
-                    $isCollapsibleContainerNode,
-                );
-
-                if ($isCollapsibleContainerNode(container)) {
-                    const parent = container.getParent<ElementNode>();
-                    if (
-                        parent !== null &&
-                        parent.getFirstChild<LexicalNode>() === container &&
-                        selection.anchor.key ===
-                        container.getFirstDescendant<LexicalNode>()?.getKey()
-                    ) {
-                        container.insertBefore($createParagraphNode());
-                    }
-                }
-            }
-
-            return false;
-        };
-
-        const onEscapeDown = () => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection) && selection.isCollapsed()) {
-                const container = $findMatchingParent(
-                    selection.anchor.getNode(),
-                    $isCollapsibleContainerNode,
-                );
-
-                if ($isCollapsibleContainerNode(container)) {
-                    const parent = container.getParent<ElementNode>();
-                    if (
-                        parent !== null &&
-                        parent.getLastChild<LexicalNode>() === container
-                    ) {
-                        const titleParagraph = container.getFirstDescendant<LexicalNode>();
-                        const contentParagraph = container.getLastDescendant<LexicalNode>();
-
-                        if (
-                            (contentParagraph !== null &&
-                                selection.anchor.key === contentParagraph.getKey() &&
-                                selection.anchor.offset ===
-                                contentParagraph.getTextContentSize()) ||
-                            (titleParagraph !== null &&
-                                selection.anchor.key === titleParagraph.getKey() &&
-                                selection.anchor.offset === titleParagraph.getTextContentSize())
-                        ) {
-                            container.insertAfter($createParagraphNode());
-                        }
-                    }
-                }
-            }
-
-            return false;
-        };
-
-        return mergeRegister(
-            // Structure enforcing transformers for each node type. In case nesting structure is not
-            // "Container > Title + Content" it'll unwrap nodes and convert it back
-            // to regular content.
-            editor.registerNodeTransform(CollapsibleContentNode, (node) => {
-                const parent = node.getParent<ElementNode>();
-                if (!$isCollapsibleContainerNode(parent)) {
-                    const children = node.getChildren<LexicalNode>();
-                    for (const child of children) {
-                        node.insertBefore(child);
-                    }
-                    node.remove();
-                }
-            }),
-
-            editor.registerNodeTransform(CollapsibleTitleNode, (node) => {
-                const parent = node.getParent<ElementNode>();
-                if (!$isCollapsibleContainerNode(parent)) {
-                    node.replace(
-                        $createParagraphNode().append(...node.getChildren<LexicalNode>()),
-                    );
-                    return;
-                }
-            }),
-
-            editor.registerNodeTransform(CollapsibleContainerNode, (node) => {
-                const children = node.getChildren<LexicalNode>();
-                if (
-                    children.length !== 2 ||
-                    !$isCollapsibleTitleNode(children[0]) ||
-                    !$isCollapsibleContentNode(children[1])
-                ) {
-                    for (const child of children) {
-                        node.insertBefore(child);
-                    }
-                    node.remove();
-                }
-            }),
-
-            // This handles the case when container is collapsed and we delete its previous sibling
-            // into it, it would cause collapsed content deleted (since it's display: none, and selection
-            // swallows it when deletes single char). Instead we expand container, which is although
-            // not perfect, but avoids bigger problem
-            editor.registerCommand(
-                DELETE_CHARACTER_COMMAND,
-                () => {
-                    const selection = $getSelection();
-                    if (
-                        !$isRangeSelection(selection) ||
-                        !selection.isCollapsed() ||
-                        selection.anchor.offset !== 0
-                    ) {
-                        return false;
-                    }
-
-                    const anchorNode = selection.anchor.getNode();
-                    const topLevelElement = anchorNode.getTopLevelElement();
-                    if (topLevelElement === null) {
-                        return false;
-                    }
-
-                    const container = topLevelElement.getPreviousSibling<LexicalNode>();
-                    if (!$isCollapsibleContainerNode(container) || container.getOpen()) {
-                        return false;
-                    }
-
-                    container.setOpen(true);
                     return true;
-                },
-                COMMAND_PRIORITY_LOW,
-            ),
-
-            // When collapsible is the last child pressing down/right arrow will insert paragraph
-            // below it to allow adding more content. It's similar what $insertBlockNode
-            // (mainly for decorators), except it'll always be possible to continue adding
-            // new content even if trailing paragraph is accidentally deleted
-            editor.registerCommand(
-                KEY_ARROW_DOWN_COMMAND,
-                onEscapeDown,
-                COMMAND_PRIORITY_LOW,
-            ),
-
-            editor.registerCommand(
-                KEY_ARROW_RIGHT_COMMAND,
-                onEscapeDown,
-                COMMAND_PRIORITY_LOW,
-            ),
-
-            // When collapsible is the first child pressing up/left arrow will insert paragraph
-            // above it to allow adding more content. It's similar what $insertBlockNode
-            // (mainly for decorators), except it'll always be possible to continue adding
-            // new content even if leading paragraph is accidentally deleted
-            editor.registerCommand(
-                KEY_ARROW_UP_COMMAND,
-                onEscapeUp,
-                COMMAND_PRIORITY_LOW,
-            ),
-
-            editor.registerCommand(
-                KEY_ARROW_LEFT_COMMAND,
-                onEscapeUp,
-                COMMAND_PRIORITY_LOW,
-            ),
-
-            // Handling CMD+Enter to toggle collapsible element collapsed state
-            editor.registerCommand(
-                INSERT_PARAGRAPH_COMMAND,
-                () => {
-                    const windowEvent = editor._window?.event as
-                        | KeyboardEvent
-                        | undefined;
-
-                    if (
-                        windowEvent &&
-                        (windowEvent.ctrlKey || windowEvent.metaKey) &&
-                        windowEvent.key === 'Enter'
-                    ) {
-                        const selection = $getPreviousSelection();
-                        if ($isRangeSelection(selection) && selection.isCollapsed()) {
-                            const parent = $findMatchingParent(
-                                selection.anchor.getNode(),
-                                (node) => $isElementNode(node) && !node.isInline(),
-                            );
-
-                            if ($isCollapsibleTitleNode(parent)) {
-                                const container = parent.getParent<ElementNode>();
-                                if ($isCollapsibleContainerNode(container)) {
-                                    container.toggleOpen();
-                                    $setSelection(selection.clone());
-                                    return true;
-                                }
-                            }
-                        }
-                    }
-
-                    return false;
-                },
-                COMMAND_PRIORITY_LOW,
-            ),
-            editor.registerCommand(
-                INSERT_COLLAPSIBLE_COMMAND,
-                () => {
-                    editor.update(() => {
-                        const title = $createCollapsibleTitleNode();
-                        const paragraph = $createParagraphNode();
-                        $insertNodeToNearestRoot(
-                            $createCollapsibleContainerNode(true).append(
-                                title.append(paragraph),
-                                $createCollapsibleContentNode().append($createParagraphNode()),
-                            ),
-                        );
-                        paragraph.select();
-                    });
-                    return true;
-                },
-                COMMAND_PRIORITY_LOW,
-            ),
-        );
-    }, [editor]);
-
-    return null;
-}
-
-
-
-
-export const INSERT_INLINE_COMMAND: LexicalCommand<void> = createCommand(
-    'INSERT_INLINE_COMMAND',
-);
-
-function AddCommentBox({
-    anchorKey,
-    editor,
-    onAddComment,
-}: {
-    anchorKey: NodeKey;
-    editor: LexicalEditor;
-    onAddComment: () => void;
-}): JSX.Element {
-    const boxRef = useRef<HTMLDivElement>(null);
-
-    const updatePosition = useCallback(() => {
-        const boxElem = boxRef.current;
-        const rootElement = editor.getRootElement();
-        const anchorElement = editor.getElementByKey(anchorKey);
-
-        if (boxElem !== null && rootElement !== null && anchorElement !== null) {
-            const { right } = rootElement.getBoundingClientRect();
-            const { top } = anchorElement.getBoundingClientRect();
-            boxElem.style.left = `${right - 20}px`;
-            boxElem.style.top = `${top - 30}px`;
-        }
-    }, [anchorKey, editor]);
-
-    useEffect(() => {
-        window.addEventListener('resize', updatePosition);
-
-        return () => {
-            window.removeEventListener('resize', updatePosition);
-        };
-    }, [editor, updatePosition]);
-
-    useLayoutEffect(() => {
-        updatePosition();
-    }, [anchorKey, editor, updatePosition]);
-
-    return (
-        <div className= "CommentPlugin_AddCommentBox" ref = { boxRef } >
-            <button
-        className="CommentPlugin_AddCommentBox_button"
-    onClick = { onAddComment } >
-        <i className="icon add-comment" />
-            </button>
-            < /div>
-  );
-}
-
-function EscapeHandlerPlugin({
-    onEscape,
-}: {
-    onEscape: (e: KeyboardEvent) => boolean;
-}): null {
-    const [editor] = useLexicalComposerContext();
-
-    useEffect(() => {
-        return editor.registerCommand(
-            KEY_ESCAPE_COMMAND,
-            (event: KeyboardEvent) => {
-                return onEscape(event);
-            },
-            2,
-        );
-    }, [editor, onEscape]);
-
-    return null;
-}
-
-function PlainTextEditor({
-    className,
-    autoFocus,
-    onEscape,
-    onChange,
-    editorRef,
-    placeholder = 'Type a comment...',
-}: {
-    autoFocus?: boolean;
-    className?: string;
-    editorRef?: { current: null | LexicalEditor };
-    onChange: (editorState: EditorState, editor: LexicalEditor) => void;
-    onEscape: (e: KeyboardEvent) => boolean;
-    placeholder?: string;
-}) {
-    const initialConfig = {
-        namespace: 'Commenting',
-        nodes: [],
-        onError: (error: Error) => {
-            throw error;
-        },
-        theme: CommentEditorTheme,
-    };
-
-    return (
-        <LexicalComposer initialConfig= { initialConfig } >
-        <div className="CommentPlugin_CommentInputBox_EditorContainer" >
-            <PlainTextPlugin
-          contentEditable={
-        <ContentEditable className={ className } />}
-        placeholder = {< Placeholder > { placeholder } < /Placeholder>}
-        ErrorBoundary = { LexicalErrorBoundary }
-            />
-            <OnChangePlugin onChange={ onChange } />
-                < HistoryPlugin />
-                { autoFocus !== false && <AutoFocusPlugin />}
-                < EscapeHandlerPlugin onEscape = { onEscape } />
-                    <ClearEditorPlugin />
-        {
-            editorRef !== undefined && <EditorRefPlugin editorRef={ editorRef } />}
-                < /div>
-                < /LexicalComposer>
-  );
-        }
-
-        function useOnChange(
-            setContent: (text: string) => void,
-            setCanSubmit: (canSubmit: boolean) => void,
-        ) {
-            return useCallback(
-                (editorState: EditorState, _editor: LexicalEditor) => {
-                    editorState.read(() => {
-                        setContent($rootTextContent());
-                        setCanSubmit(!$isRootTextContentEmpty(_editor.isComposing(), true));
-                    });
-                },
-                [setCanSubmit, setContent],
-            );
-        }
-
-        function CommentInputBox({
-            editor,
-            cancelAddComment,
-            submitAddComment,
-        }: {
-            cancelAddComment: () => void;
-            editor: LexicalEditor;
-            submitAddComment: (
-                commentOrThread: Comment | Thread,
-                isInlineComment: boolean,
-                thread?: Thread,
-                selection?: RangeSelection | null,
-            ) => void;
-        }) {
-            const [content, setContent] = useState('');
-            const [canSubmit, setCanSubmit] = useState(false);
-            const boxRef = useRef<HTMLDivElement>(null);
-            const selectionState = useMemo(
-                () => ({
-                    container: document.createElement('div'),
-                    elements: [],
-                }),
-                [],
-            );
-            const selectionRef = useRef<RangeSelection | null>(null);
-            const author = useCollabAuthorName();
-
-            const updateLocation = useCallback(() => {
-                editor.getEditorState().read(() => {
-                    const selection = $getSelection();
-
-                    if ($isRangeSelection(selection)) {
-                        selectionRef.current = selection.clone();
-                        const anchor = selection.anchor;
-                        const focus = selection.focus;
-                        const range = createDOMRange(
-                            editor,
-                            anchor.getNode(),
-                            anchor.offset,
-                            focus.getNode(),
-                            focus.offset,
-                        );
-                        const boxElem = boxRef.current;
-                        if (range !== null && boxElem !== null) {
-                            const { left, bottom, width } = range.getBoundingClientRect();
-                            const selectionRects = createRectsFromDOMRange(editor, range);
-                            let correctedLeft =
-                                selectionRects.length === 1 ? left + width / 2 - 125 : left - 125;
-                            if (correctedLeft < 10) {
-                                correctedLeft = 10;
-                            }
-                            boxElem.style.left = `${correctedLeft}px`;
-                            boxElem.style.top = `${bottom +
-                                20 +
-                                (window.pageYOffset || document.documentElement.scrollTop)
-                                }px`;
-                            const selectionRectsLength = selectionRects.length;
-                            const { container } = selectionState;
-                            const elements: Array<HTMLSpanElement> = selectionState.elements;
-                            const elementsLength = elements.length;
-
-                            for (let i = 0; i < selectionRectsLength; i++) {
-                                const selectionRect = selectionRects[i];
-                                let elem: HTMLSpanElement = elements[i];
-                                if (elem === undefined) {
-                                    elem = document.createElement('span');
-                                    elements[i] = elem;
-                                    container.appendChild(elem);
-                                }
-                                const color = '255, 212, 0';
-                                const style = `position:absolute;top:${selectionRect.top +
-                                    (window.pageYOffset || document.documentElement.scrollTop)
-                                    }px;left:${selectionRect.left}px;height:${selectionRect.height
-                                    }px;width:${selectionRect.width
-                                    }px;background-color:rgba(${color}, 0.3);pointer-events:none;z-index:5;`;
-                                elem.style.cssText = style;
-                            }
-                            for (let i = elementsLength - 1; i >= selectionRectsLength; i--) {
-                                const elem = elements[i];
-                                container.removeChild(elem);
-                                elements.pop();
-                            }
-                        }
+                }
+                return false;
+            }
+            function handleSwipeRight(_force: number, e: TouchEvent) {
+                editor.update(() => {
+                    if ($handleAutocompleteIntent()) {
+                        e.preventDefault();
                     }
                 });
-            }, [editor, selectionState]);
-
-            useLayoutEffect(() => {
-                updateLocation();
-                const container = selectionState.container;
-                const body = document.body;
-                if (body !== null) {
-                    body.appendChild(container);
-                    return () => {
-                        body.removeChild(container);
-                    };
-                }
-            }, [selectionState.container, updateLocation]);
-
-            useEffect(() => {
-                window.addEventListener('resize', updateLocation);
-
-                return () => {
-                    window.removeEventListener('resize', updateLocation);
-                };
-            }, [updateLocation]);
-
-            const onEscape = (event: KeyboardEvent): boolean => {
-                event.preventDefault();
-                cancelAddComment();
-                return true;
-            };
-
-            const submitComment = () => {
-                if (canSubmit) {
-                    let quote = editor.getEditorState().read(() => {
-                        const selection = selectionRef.current;
-                        return selection ? selection.getTextContent() : '';
-                    });
-                    if (quote.length > 100) {
-                        quote = quote.slice(0, 99) + '…';
-                    }
-                    submitAddComment(
-                        createThread(quote, [createComment(content, author)]),
-                        true,
-                        undefined,
-                        selectionRef.current,
-                    );
-                    selectionRef.current = null;
-                }
-            };
-
-            const onChange = useOnChange(setContent, setCanSubmit);
-
-            return (
-                <div className= "CommentPlugin_CommentInputBox" ref = { boxRef } >
-                    <PlainTextEditor
-        className="CommentPlugin_CommentInputBox_Editor"
-            onEscape = { onEscape }
-            onChange = { onChange }
-                />
-                <div className="CommentPlugin_CommentInputBox_Buttons" >
-                    <Button
-          onClick={ cancelAddComment }
-            className = "CommentPlugin_CommentInputBox_Button" >
-                Cancel
-                < /Button>
-                < Button
-            onClick = { submitComment }
-            disabled = {!canSubmit
-        }
-        className = "CommentPlugin_CommentInputBox_Button primary" >
-            Comment
-            < /Button>
-            < /div>
-            < /div>
-  );
+            }
+            function unmountSuggestion() {
+                editor.update(() => {
+                    $clearSuggestion();
+                });
+            }
+    
+            const rootElem = editor.getRootElement();
+    
+            return mergeRegister(
+                editor.registerNodeTransform(
+                    AutocompleteNode,
+                    handleAutocompleteNodeTransform,
+                ),
+                editor.registerUpdateListener(handleUpdate),
+                editor.registerCommand(
+                    KEY_TAB_COMMAND,
+                    $handleKeypressCommand,
+                    COMMAND_PRIORITY_LOW,
+                ),
+                editor.registerCommand(
+                    KEY_ARROW_RIGHT_COMMAND,
+                    $handleKeypressCommand,
+                    COMMAND_PRIORITY_LOW,
+                ),
+                ...(rootElem !== null
+                    ? [addSwipeRightListener(rootElem, handleSwipeRight)]
+                    : []),
+                unmountSuggestion,
+            );
+        }, [editor, query, setSuggestion]);
+    
+        return null;
     }
+    
+    /*
+     * Simulate an asynchronous autocomplete server (typical in more common use cases like GMail where
+     * the data is not static).
+     */
+    class AutocompleteServer {
+        DATABASE = DICTIONARY_EN;
+        LATENCY = 200;
+    
+        query = (searchText: string): SearchPromise => {
+            let isDismissed = false;
+    
+            const dismiss = () => {
+                isDismissed = true;
+            };
+            const promise: Promise<null | string> = new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    if (isDismissed) {
+                        // TODO cache result
+                        return reject('Dismissed');
+                    }
+                    const searchTextLength = searchText.length;
+                    if (searchText === '' || searchTextLength < 4) {
+                        return resolve(null);
+                    }
+                    const char0 = searchText.charCodeAt(0);
+                    const isCapitalized = char0 >= 65 && char0 <= 90;
+                    const caseInsensitiveSearchText = isCapitalized
+                        ? String.fromCharCode(char0 + 32) + searchText.substring(1)
+                        : searchText;
+                    const match = this.DATABASE.find(
+                        (DICTIONARY_ENWord) =>
+                            DICTIONARY_ENWord.startsWith(caseInsensitiveSearchText) ?? null,
+                    );
+                    if (match === undefined) {
+                        return resolve(null);
+                    }
+                    const matchCapitalized = isCapitalized
+                        ? String.fromCharCode(match.charCodeAt(0) - 32) + match.substring(1)
+                        : match;
+                    const autocompleteChunk = matchCapitalized.substring(searchTextLength);
+                    if (autocompleteChunk === '') {
+                        return resolve(null);
+                    }
+                    return resolve(autocompleteChunk);
+                }, this.LATENCY);
+            });
+    
+            return {
+                dismiss,
+                promise,
+            };
+        };
+    }
+    
+    
+    export function CodeHighlightPlugin(): JSX.Element | null {
+        const [editor] = useLexicalComposerContext();
+    
+        useEffect(() => {
+            return registerCodeHighlighting(editor);
+        }, [editor]);
+    
+        return null;
+    }
+    
+    
+    
+    type SerializedCollapsibleContainerNode = Spread<
+        {
+            open: boolean;
+        },
+        SerializedElementNode
+    >;
+    
+    export function convertDetailsElement(
+        domNode: HTMLDetailsElement,
+    ): DOMConversionOutput | null {
+        const isOpen = domNode.open !== undefined ? domNode.open : true;
+        const node = $createCollapsibleContainerNode(isOpen);
+        return {
+            node,
+        };
+    }
+    
+    export class CollapsibleContainerNode extends ElementNode {
+        __open: boolean;
+    
+        constructor(open: boolean, key?: NodeKey) {
+            super(key);
+            this.__open = open;
+        }
+    
+        static getType(): string {
+            return 'collapsible-container';
+        }
+    
+        static clone(node: CollapsibleContainerNode): CollapsibleContainerNode {
+            return new CollapsibleContainerNode(node.__open, node.__key);
+        }
+    
+        createDOM(config: EditorConfig, editor: LexicalEditor): HTMLElement {
+            const dom = document.createElement('details');
+            dom.classList.add('Collapsible__container');
+            dom.open = this.__open;
+            dom.addEventListener('toggle', () => {
+                const open = editor.getEditorState().read(() => this.getOpen());
+                if (open !== dom.open) {
+                    editor.update(() => this.toggleOpen());
+                }
+            });
+            return dom;
+        }
+    
+        updateDOM(
+            prevNode: CollapsibleContainerNode,
+            dom: HTMLDetailsElement,
+        ): boolean {
+            if (prevNode.__open !== this.__open) {
+                dom.open = this.__open;
+            }
+    
+            return false;
+        }
+    
+        static importDOM(): DOMConversionMap<HTMLDetailsElement> | null {
+            return {
+                details: (domNode: HTMLDetailsElement) => {
+                    return {
+                        conversion: convertDetailsElement,
+                        priority: 1,
+                    };
+                },
+            };
+        }
+    
+        static importJSON(
+            serializedNode: SerializedCollapsibleContainerNode,
+        ): CollapsibleContainerNode {
+            const node = $createCollapsibleContainerNode(serializedNode.open);
+            return node;
+        }
+    
+        exportDOM(): DOMExportOutput {
+            const element = document.createElement('details');
+            element.setAttribute('open', this.__open.toString());
+            return { element };
+        }
+    
+        exportJSON(): SerializedCollapsibleContainerNode {
+            return {
+                ...super.exportJSON(),
+                open: this.__open,
+                type: 'collapsible-container',
+                version: 1,
+            };
+        }
+    
+        setOpen(open: boolean): void {
+            const writable = this.getWritable();
+            writable.__open = open;
+        }
+    
+        getOpen(): boolean {
+            return this.getLatest().__open;
+        }
+    
+        toggleOpen(): void {
+            this.setOpen(!this.getOpen());
+        }
+    }
+    
+    export function $createCollapsibleContainerNode(
+        isOpen: boolean,
+    ): CollapsibleContainerNode {
+        return new CollapsibleContainerNode(isOpen);
+    }
+    
+    export function $isCollapsibleContainerNode(
+        node: LexicalNode | null | undefined,
+    ): node is CollapsibleContainerNode {
+        return node instanceof CollapsibleContainerNode;
+    }
+    
+    
+    type SerializedCollapsibleContentNode = SerializedElementNode;
+    
+    export function convertCollapsibleContentElement(
+        domNode: HTMLElement,
+    ): DOMConversionOutput | null {
+        const node = $createCollapsibleContentNode();
+        return {
+            node,
+        };
+    }
+    
+    export class CollapsibleContentNode extends ElementNode {
+        static getType(): string {
+            return 'collapsible-content';
+        }
+    
+        static clone(node: CollapsibleContentNode): CollapsibleContentNode {
+            return new CollapsibleContentNode(node.__key);
+        }
+    
+        createDOM(config: EditorConfig): HTMLElement {
+            const dom = document.createElement('div');
+            dom.classList.add('Collapsible__content');
+            return dom;
+        }
+    
+        updateDOM(prevNode: CollapsibleContentNode, dom: HTMLElement): boolean {
+            return false;
+        }
+    
+        static importDOM(): DOMConversionMap | null {
+            return {
+                div: (domNode: HTMLElement) => {
+                    if (!domNode.hasAttribute('data-lexical-collapsible-content')) {
+                        return null;
+                    }
+                    return {
+                        conversion: convertCollapsibleContentElement,
+                        priority: 2,
+                    };
+                },
+            };
+        }
+    
+        exportDOM(): DOMExportOutput {
+            const element = document.createElement('div');
+            element.setAttribute('data-lexical-collapsible-content', 'true');
+            return { element };
+        }
+    
+        static importJSON(
+            serializedNode: SerializedCollapsibleContentNode,
+        ): CollapsibleContentNode {
+            return $createCollapsibleContentNode();
+        }
+    
+        isShadowRoot(): boolean {
+            return true;
+        }
+    
+        exportJSON(): SerializedCollapsibleContentNode {
+            return {
+                ...super.exportJSON(),
+                type: 'collapsible-content',
+                version: 1,
+            };
+        }
+    }
+    
+    export function $createCollapsibleContentNode(): CollapsibleContentNode {
+        return new CollapsibleContentNode();
+    }
+    
+    export function $isCollapsibleContentNode(
+        node: LexicalNode | null | undefined,
+    ): node is CollapsibleContentNode {
+        return node instanceof CollapsibleContentNode;
+    }
+    
+    type SerializedCollapsibleTitleNode = SerializedElementNode;
+    
+    export function convertSummaryElement(
+        domNode: HTMLElement,
+    ): DOMConversionOutput | null {
+        const node = $createCollapsibleTitleNode();
+        return {
+            node,
+        };
+    }
+    
+    export class CollapsibleTitleNode extends ElementNode {
+        static getType(): string {
+            return 'collapsible-title';
+        }
+    
+        static clone(node: CollapsibleTitleNode): CollapsibleTitleNode {
+            return new CollapsibleTitleNode(node.__key);
+        }
+    
+        createDOM(config: EditorConfig, editor: LexicalEditor): HTMLElement {
+            const dom = document.createElement('summary');
+            dom.classList.add('Collapsible__title');
+            return dom;
+        }
+    
+        updateDOM(prevNode: CollapsibleTitleNode, dom: HTMLElement): boolean {
+            return false;
+        }
+    
+        static importDOM(): DOMConversionMap | null {
+            return {
+                summary: (domNode: HTMLElement) => {
+                    return {
+                        conversion: convertSummaryElement,
+                        priority: 1,
+                    };
+                },
+            };
+        }
+    
+        static importJSON(
+            serializedNode: SerializedCollapsibleTitleNode,
+        ): CollapsibleTitleNode {
+            return $createCollapsibleTitleNode();
+        }
+    
+        exportDOM(): DOMExportOutput {
+            const element = document.createElement('summary');
+            return { element };
+        }
+    
+        exportJSON(): SerializedCollapsibleTitleNode {
+            return {
+                ...super.exportJSON(),
+                type: 'collapsible-title',
+                version: 1,
+            };
+        }
+    
+        collapseAtStart(_selection: RangeSelection): boolean {
+            this.getParentOrThrow().insertBefore(this);
+            return true;
+        }
+    
+        insertNewAfter(_: RangeSelection, restoreSelection = true): ElementNode {
+            const containerNode = this.getParentOrThrow();
+    
+            if (!$isCollapsibleContainerNode(containerNode)) {
+                throw new Error(
+                    'CollapsibleTitleNode expects to be child of CollapsibleContainerNode',
+                );
+            }
+    
+            if (containerNode.getOpen()) {
+                const contentNode = this.getNextSibling();
+                if (!$isCollapsibleContentNode(contentNode)) {
+                    throw new Error(
+                        'CollapsibleTitleNode expects to have CollapsibleContentNode sibling',
+                    );
+                }
+    
+                const firstChild = contentNode.getFirstChild();
+                if ($isElementNode(firstChild)) {
+                    return firstChild;
+                } else {
+                    const paragraph = $createParagraphNode();
+                    contentNode.append(paragraph);
+                    return paragraph;
+                }
+            } else {
+                const paragraph = $createParagraphNode();
+                containerNode.insertAfter(paragraph, restoreSelection);
+                return paragraph;
+            }
+        }
+    }
+    
+    export function $createCollapsibleTitleNode(): CollapsibleTitleNode {
+        return new CollapsibleTitleNode();
+    }
+    
+    export function $isCollapsibleTitleNode(
+        node: LexicalNode | null | undefined,
+    ): node is CollapsibleTitleNode {
+        return node instanceof CollapsibleTitleNode;
+    }
+    
+    
+    
+    
+    
+    
+    export const INSERT_COLLAPSIBLE_COMMAND = createCommand<void>();
+    export const TOGGLE_COLLAPSIBLE_COMMAND = createCommand<NodeKey>();
+    
+    export function CollapsiblePlugin(): null {
+        const [editor] = useLexicalComposerContext();
+    
+        useEffect(() => {
+            if (
+                !editor.hasNodes([
+                    CollapsibleContainerNode,
+                    CollapsibleTitleNode,
+                    CollapsibleContentNode,
+                ])
+            ) {
+                throw new Error(
+                    'CollapsiblePlugin: CollapsibleContainerNode, CollapsibleTitleNode, or CollapsibleContentNode not registered on editor',
+                );
+            }
+    
+            const onEscapeUp = () => {
+                const selection = $getSelection();
+                if (
+                    $isRangeSelection(selection) &&
+                    selection.isCollapsed() &&
+                    selection.anchor.offset === 0
+                ) {
+                    const container = $findMatchingParent(
+                        selection.anchor.getNode(),
+                        $isCollapsibleContainerNode,
+                    );
+    
+                    if ($isCollapsibleContainerNode(container)) {
+                        const parent = container.getParent<ElementNode>();
+                        if (
+                            parent !== null &&
+                            parent.getFirstChild<LexicalNode>() === container &&
+                            selection.anchor.key ===
+                            container.getFirstDescendant<LexicalNode>()?.getKey()
+                        ) {
+                            container.insertBefore($createParagraphNode());
+                        }
+                    }
+                }
+    
+                return false;
+            };
+    
+            const onEscapeDown = () => {
+                const selection = $getSelection();
+                if ($isRangeSelection(selection) && selection.isCollapsed()) {
+                    const container = $findMatchingParent(
+                        selection.anchor.getNode(),
+                        $isCollapsibleContainerNode,
+                    );
+    
+                    if ($isCollapsibleContainerNode(container)) {
+                        const parent = container.getParent<ElementNode>();
+                        if (
+                            parent !== null &&
+                            parent.getLastChild<LexicalNode>() === container
+                        ) {
+                            const titleParagraph = container.getFirstDescendant<LexicalNode>();
+                            const contentParagraph = container.getLastDescendant<LexicalNode>();
+    
+                            if (
+                                (contentParagraph !== null &&
+                                    selection.anchor.key === contentParagraph.getKey() &&
+                                    selection.anchor.offset ===
+                                    contentParagraph.getTextContentSize()) ||
+                                (titleParagraph !== null &&
+                                    selection.anchor.key === titleParagraph.getKey() &&
+                                    selection.anchor.offset === titleParagraph.getTextContentSize())
+                            ) {
+                                container.insertAfter($createParagraphNode());
+                            }
+                        }
+                    }
+                }
+    
+                return false;
+            };
+    
+            return mergeRegister(
+                // Structure enforcing transformers for each node type. In case nesting structure is not
+                // "Container > Title + Content" it'll unwrap nodes and convert it back
+                // to regular content.
+                editor.registerNodeTransform(CollapsibleContentNode, (node) => {
+                    const parent = node.getParent<ElementNode>();
+                    if (!$isCollapsibleContainerNode(parent)) {
+                        const children = node.getChildren<LexicalNode>();
+                        for (const child of children) {
+                            node.insertBefore(child);
+                        }
+                        node.remove();
+                    }
+                }),
+    
+                editor.registerNodeTransform(CollapsibleTitleNode, (node) => {
+                    const parent = node.getParent<ElementNode>();
+                    if (!$isCollapsibleContainerNode(parent)) {
+                        node.replace(
+                            $createParagraphNode().append(...node.getChildren<LexicalNode>()),
+                        );
+                        return;
+                    }
+                }),
+    
+                editor.registerNodeTransform(CollapsibleContainerNode, (node) => {
+                    const children = node.getChildren<LexicalNode>();
+                    if (
+                        children.length !== 2 ||
+                        !$isCollapsibleTitleNode(children[0]) ||
+                        !$isCollapsibleContentNode(children[1])
+                    ) {
+                        for (const child of children) {
+                            node.insertBefore(child);
+                        }
+                        node.remove();
+                    }
+                }),
+    
+                // This handles the case when container is collapsed and we delete its previous sibling
+                // into it, it would cause collapsed content deleted (since it's display: none, and selection
+                // swallows it when deletes single char). Instead we expand container, which is although
+                // not perfect, but avoids bigger problem
+                editor.registerCommand(
+                    DELETE_CHARACTER_COMMAND,
+                    () => {
+                        const selection = $getSelection();
+                        if (
+                            !$isRangeSelection(selection) ||
+                            !selection.isCollapsed() ||
+                            selection.anchor.offset !== 0
+                        ) {
+                            return false;
+                        }
+    
+                        const anchorNode = selection.anchor.getNode();
+                        const topLevelElement = anchorNode.getTopLevelElement();
+                        if (topLevelElement === null) {
+                            return false;
+                        }
+    
+                        const container = topLevelElement.getPreviousSibling<LexicalNode>();
+                        if (!$isCollapsibleContainerNode(container) || container.getOpen()) {
+                            return false;
+                        }
+    
+                        container.setOpen(true);
+                        return true;
+                    },
+                    COMMAND_PRIORITY_LOW,
+                ),
+    
+                // When collapsible is the last child pressing down/right arrow will insert paragraph
+                // below it to allow adding more content. It's similar what $insertBlockNode
+                // (mainly for decorators), except it'll always be possible to continue adding
+                // new content even if trailing paragraph is accidentally deleted
+                editor.registerCommand(
+                    KEY_ARROW_DOWN_COMMAND,
+                    onEscapeDown,
+                    COMMAND_PRIORITY_LOW,
+                ),
+    
+                editor.registerCommand(
+                    KEY_ARROW_RIGHT_COMMAND,
+                    onEscapeDown,
+                    COMMAND_PRIORITY_LOW,
+                ),
+    
+                // When collapsible is the first child pressing up/left arrow will insert paragraph
+                // above it to allow adding more content. It's similar what $insertBlockNode
+                // (mainly for decorators), except it'll always be possible to continue adding
+                // new content even if leading paragraph is accidentally deleted
+                editor.registerCommand(
+                    KEY_ARROW_UP_COMMAND,
+                    onEscapeUp,
+                    COMMAND_PRIORITY_LOW,
+                ),
+    
+                editor.registerCommand(
+                    KEY_ARROW_LEFT_COMMAND,
+                    onEscapeUp,
+                    COMMAND_PRIORITY_LOW,
+                ),
+    
+                // Handling CMD+Enter to toggle collapsible element collapsed state
+                editor.registerCommand(
+                    INSERT_PARAGRAPH_COMMAND,
+                    () => {
+                        const windowEvent = editor._window?.event as
+                            | KeyboardEvent
+                            | undefined;
+    
+                        if (
+                            windowEvent &&
+                            (windowEvent.ctrlKey || windowEvent.metaKey) &&
+                            windowEvent.key === 'Enter'
+                        ) {
+                            const selection = $getPreviousSelection();
+                            if ($isRangeSelection(selection) && selection.isCollapsed()) {
+                                const parent = $findMatchingParent(
+                                    selection.anchor.getNode(),
+                                    (node) => $isElementNode(node) && !node.isInline(),
+                                );
+    
+                                if ($isCollapsibleTitleNode(parent)) {
+                                    const container = parent.getParent<ElementNode>();
+                                    if ($isCollapsibleContainerNode(container)) {
+                                        container.toggleOpen();
+                                        $setSelection(selection.clone());
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+    
+                        return false;
+                    },
+                    COMMAND_PRIORITY_LOW,
+                ),
+                editor.registerCommand(
+                    INSERT_COLLAPSIBLE_COMMAND,
+                    () => {
+                        editor.update(() => {
+                            const title = $createCollapsibleTitleNode();
+                            const paragraph = $createParagraphNode();
+                            $insertNodeToNearestRoot(
+                                $createCollapsibleContainerNode(true).append(
+                                    title.append(paragraph),
+                                    $createCollapsibleContentNode().append($createParagraphNode()),
+                                ),
+                            );
+                            paragraph.select();
+                        });
+                        return true;
+                    },
+                    COMMAND_PRIORITY_LOW,
+                ),
+            );
+        }, [editor]);
+    
+        return null;
+    }
+    
+    
+    
+    
+    export const INSERT_INLINE_COMMAND: LexicalCommand<void> = createCommand(
+        'INSERT_INLINE_COMMAND',
+    );
+    
+    function AddCommentBox({
+        anchorKey,
+        editor,
+        onAddComment,
+    }: {
+        anchorKey: NodeKey;
+        editor: LexicalEditor;
+        onAddComment: () => void;
+    }): JSX.Element {
+        const boxRef = useRef<HTMLDivElement>(null);
+    
+        const updatePosition = useCallback(() => {
+            const boxElem = boxRef.current;
+            const rootElement = editor.getRootElement();
+            const anchorElement = editor.getElementByKey(anchorKey);
+    
+            if (boxElem !== null && rootElement !== null && anchorElement !== null) {
+                const { right } = rootElement.getBoundingClientRect();
+                const { top } = anchorElement.getBoundingClientRect();
+                boxElem.style.left = `${right - 20}px`;
+                boxElem.style.top = `${top - 30}px`;
+            }
+        }, [anchorKey, editor]);
+    
+        useEffect(() => {
+            window.addEventListener('resize', updatePosition);
+    
+            return () => {
+                window.removeEventListener('resize', updatePosition);
+            };
+        }, [editor, updatePosition]);
+    
+        useLayoutEffect(() => {
+            updatePosition();
+        }, [anchorKey, editor, updatePosition]);
+    
+        return (
+            <div className= "CommentPlugin_AddCommentBox" ref = { boxRef } >
+                <button
+            className="CommentPlugin_AddCommentBox_button"
+        onClick = { onAddComment } >
+            <i className="icon add-comment" />
+                </button>
+                < /div>
+      );
+    }
+    
+    function EscapeHandlerPlugin({
+        onEscape,
+    }: {
+        onEscape: (e: KeyboardEvent) => boolean;
+    }): null {
+        const [editor] = useLexicalComposerContext();
+    
+        useEffect(() => {
+            return editor.registerCommand(
+                KEY_ESCAPE_COMMAND,
+                (event: KeyboardEvent) => {
+                    return onEscape(event);
+                },
+                2,
+            );
+        }, [editor, onEscape]);
+    
+        return null;
+    }
+    
+    function PlainTextEditor({
+        className,
+        autoFocus,
+        onEscape,
+        onChange,
+        editorRef,
+        placeholder = 'Type a comment...',
+    }: {
+        autoFocus?: boolean;
+        className?: string;
+        editorRef?: { current: null | LexicalEditor };
+        onChange: (editorState: EditorState, editor: LexicalEditor) => void;
+        onEscape: (e: KeyboardEvent) => boolean;
+        placeholder?: string;
+    }) {
+        const initialConfig = {
+            namespace: 'Commenting',
+            nodes: [],
+            onError: (error: Error) => {
+                throw error;
+            },
+            theme: CommentEditorTheme,
+        };
+    
+        return (
+            <LexicalComposer initialConfig= { initialConfig } >
+            <div className="CommentPlugin_CommentInputBox_EditorContainer" >
+                <PlainTextPlugin
+              contentEditable={
+            <ContentEditable className={ className } />}
+            placeholder = {< Placeholder > { placeholder } < /Placeholder>}
+            ErrorBoundary = { LexicalErrorBoundary }
+                />
+                <OnChangePlugin onChange={ onChange } />
+                    < HistoryPlugin />
+                    { autoFocus !== false && <AutoFocusPlugin />}
+                    < EscapeHandlerPlugin onEscape = { onEscape } />
+                        <ClearEditorPlugin />
+            {
+                editorRef !== undefined && <EditorRefPlugin editorRef={ editorRef } />}
+                    < /div>
+                    < /LexicalComposer>
+      );
+            }
+    
+            function useOnChange(
+                setContent: (text: string) => void,
+                setCanSubmit: (canSubmit: boolean) => void,
+            ) {
+                return useCallback(
+                    (editorState: EditorState, _editor: LexicalEditor) => {
+                        editorState.read(() => {
+                            setContent($rootTextContent());
+                            setCanSubmit(!$isRootTextContentEmpty(_editor.isComposing(), true));
+                        });
+                    },
+                    [setCanSubmit, setContent],
+                );
+            }
+    
+            function CommentInputBox({
+                editor,
+                cancelAddComment,
+                submitAddComment,
+            }: {
+                cancelAddComment: () => void;
+                editor: LexicalEditor;
+                submitAddComment: (
+                    commentOrThread: Comment | Thread,
+                    isInlineComment: boolean,
+                    thread?: Thread,
+                    selection?: RangeSelection | null,
+                ) => void;
+            }) {
+                const [content, setContent] = useState('');
+                const [canSubmit, setCanSubmit] = useState(false);
+                const boxRef = useRef<HTMLDivElement>(null);
+                const selectionState = useMemo(
+                    () => ({
+                        container: document.createElement('div'),
+                        elements: [],
+                    }),
+                    [],
+                );
+                const selectionRef = useRef<RangeSelection | null>(null);
+                const author = useCollabAuthorName();
+    
+                const updateLocation = useCallback(() => {
+                    editor.getEditorState().read(() => {
+                        const selection = $getSelection();
+    
+                        if ($isRangeSelection(selection)) {
+                            selectionRef.current = selection.clone();
+                            const anchor = selection.anchor;
+                            const focus = selection.focus;
+                            const range = createDOMRange(
+                                editor,
+                                anchor.getNode(),
+                                anchor.offset,
+                                focus.getNode(),
+                                focus.offset,
+                            );
+                            const boxElem = boxRef.current;
+                            if (range !== null && boxElem !== null) {
+                                const { left, bottom, width } = range.getBoundingClientRect();
+                                const selectionRects = createRectsFromDOMRange(editor, range);
+                                let correctedLeft =
+                                    selectionRects.length === 1 ? left + width / 2 - 125 : left - 125;
+                                if (correctedLeft < 10) {
+                                    correctedLeft = 10;
+                                }
+                                boxElem.style.left = `${correctedLeft}px`;
+                                boxElem.style.top = `${bottom +
+                                    20 +
+                                    (window.pageYOffset || document.documentElement.scrollTop)
+                                    }px`;
+                                const selectionRectsLength = selectionRects.length;
+                                const { container } = selectionState;
+                                const elements: Array<HTMLSpanElement> = selectionState.elements;
+                                const elementsLength = elements.length;
+    
+                                for (let i = 0; i < selectionRectsLength; i++) {
+                                    const selectionRect = selectionRects[i];
+                                    let elem: HTMLSpanElement = elements[i];
+                                    if (elem === undefined) {
+                                        elem = document.createElement('span');
+                                        elements[i] = elem;
+                                        container.appendChild(elem);
+                                    }
+                                    const color = '255, 212, 0';
+                                    const style = `position:absolute;top:${selectionRect.top +
+                                        (window.pageYOffset || document.documentElement.scrollTop)
+                                        }px;left:${selectionRect.left}px;height:${selectionRect.height
+                                        }px;width:${selectionRect.width
+                                        }px;background-color:rgba(${color}, 0.3);pointer-events:none;z-index:5;`;
+                                    elem.style.cssText = style;
+                                }
+                                for (let i = elementsLength - 1; i >= selectionRectsLength; i--) {
+                                    const elem = elements[i];
+                                    container.removeChild(elem);
+                                    elements.pop();
+                                }
+                            }
+                        }
+                    });
+                }, [editor, selectionState]);
+    
+                useLayoutEffect(() => {
+                    updateLocation();
+                    const container = selectionState.container;
+                    const body = document.body;
+                    if (body !== null) {
+                        body.appendChild(container);
+                        return () => {
+                            body.removeChild(container);
+                        };
+                    }
+                }, [selectionState.container, updateLocation]);
+    
+                useEffect(() => {
+                    window.addEventListener('resize', updateLocation);
+    
+                    return () => {
+                        window.removeEventListener('resize', updateLocation);
+                    };
+                }, [updateLocation]);
+    
+                const onEscape = (event: KeyboardEvent): boolean => {
+                    event.preventDefault();
+                    cancelAddComment();
+                    return true;
+                };
+    
+                const submitComment = () => {
+                    if (canSubmit) {
+                        let quote = editor.getEditorState().read(() => {
+                            const selection = selectionRef.current;
+                            return selection ? selection.getTextContent() : '';
+                        });
+                        if (quote.length > 100) {
+                            quote = quote.slice(0, 99) + '…';
+                        }
+                        submitAddComment(
+                            createThread(quote, [createComment(content, author)]),
+                            true,
+                            undefined,
+                            selectionRef.current,
+                        );
+                        selectionRef.current = null;
+                    }
+                };
+    
+                const onChange = useOnChange(setContent, setCanSubmit);
+    
+                return (
+                    <div className= "CommentPlugin_CommentInputBox" ref = { boxRef } >
+                        <PlainTextEditor
+            className="CommentPlugin_CommentInputBox_Editor"
+                onEscape = { onEscape }
+                onChange = { onChange }
+                    />
+                    <div className="CommentPlugin_CommentInputBox_Buttons" >
+                        <Button
+              onClick={ cancelAddComment }
+                className = "CommentPlugin_CommentInputBox_Button" >
+                    Cancel
+                    < /Button>
+                    < Button
+                onClick = { submitComment }
+                disabled = {!canSubmit
+            }
+            className = "CommentPlugin_CommentInputBox_Button primary" >
+                Comment
+                < /Button>
+                < /div>
+                < /div>
+      );
+        }
+
 
     function CommentsComposer({
         submitAddComment,
@@ -8176,1684 +8208,1684 @@ onClick = {() => toggleEditorSelection(getCurrentEditor())}
 title = { isRecording? 'Disable test recorder': 'Enable test recorder' }
     />
   );
-const output = isRecording ? (
-    <div className= "test-recorder-output" >
-    <div className="test-recorder-toolbar" >
-        <button
-          className="test-recorder-button"
-id = "test-recorder-button-snapshot"
-title = "Insert snapshot"
-onClick = { onSnapshotClick }
-    />
-    <button
-          className="test-recorder-button"
-id = "test-recorder-button-copy"
-title = "Copy to clipboard"
-onClick = { onCopyClick }
-    />
-    <button
-          className="test-recorder-button"
-id = "test-recorder-button-download"
-title = "Download as a file"
-onClick = { onDownloadClick }
-    />
-    </div>
-    < pre id = "test-recorder" ref = { preRef } >
-        { templatedTest }
-        < /pre>
-        < /div>
-  ) : null;
-
-return [button, output];
-}
-
-export function TestRecorderPlugin(): JSX.Element {
-    const [editor] = useLexicalComposerContext();
-    const [testRecorderButton, testRecorderOutput] = useTestRecorder(editor);
-
-    return (
-        <>
-        { testRecorderButton }
-      { testRecorderOutput }
-    </>
-  );
-}
-
-const blockTypeToBlockName = {
-    bullet: 'Bulleted List',
-    check: 'Check List',
-    code: 'Code Block',
-    h1: 'Heading 1',
-    h2: 'Heading 2',
-    h3: 'Heading 3',
-    h4: 'Heading 4',
-    h5: 'Heading 5',
-    h6: 'Heading 6',
-    number: 'Numbered List',
-    paragraph: 'Normal',
-    quote: 'Quote',
-};
-
-const rootTypeToRootName = {
-    root: 'Root',
-    table: 'Table',
-};
-
-function getCodeLanguageOptions(): [string, string][] {
-    const options: [string, string][] = [];
-
-    for (const [lang, friendlyName] of Object.entries(
-        CODE_LANGUAGE_FRIENDLY_NAME_MAP,
-    )) {
-        options.push([lang, friendlyName]);
-    }
-
-    return options;
-}
-
-const CODE_LANGUAGE_OPTIONS = getCodeLanguageOptions();
-
-const FONT_FAMILY_OPTIONS: [string, string][] = [
-    ['Arial', 'Arial'],
-    ['Courier New', 'Courier New'],
-    ['Georgia', 'Georgia'],
-    ['Times New Roman', 'Times New Roman'],
-    ['Trebuchet MS', 'Trebuchet MS'],
-    ['Verdana', 'Verdana'],
-];
-
-const FONT_SIZE_OPTIONS: [string, string][] = [
-    ['10px', '10px'],
-    ['11px', '11px'],
-    ['12px', '12px'],
-    ['13px', '13px'],
-    ['14px', '14px'],
-    ['15px', '15px'],
-    ['16px', '16px'],
-    ['17px', '17px'],
-    ['18px', '18px'],
-    ['19px', '19px'],
-    ['20px', '20px'],
-];
-
-const ELEMENT_FORMAT_OPTIONS: {
-    [key in Exclude<ElementFormatType, ''>]: {
-        icon: string;
-        iconRTL: string;
-        name: string;
-    };
-} = {
-    center: {
-        icon: 'center-align',
-        iconRTL: 'center-align',
-        name: 'Center Align',
-    },
-    end: {
-        icon: 'right-align',
-        iconRTL: 'left-align',
-        name: 'End Align',
-    },
-    justify: {
-        icon: 'justify-align',
-        iconRTL: 'justify-align',
-        name: 'Justify Align',
-    },
-    left: {
-        icon: 'left-align',
-        iconRTL: 'left-align',
-        name: 'Left Align',
-    },
-    right: {
-        icon: 'right-align',
-        iconRTL: 'right-align',
-        name: 'Right Align',
-    },
-    start: {
-        icon: 'left-align',
-        iconRTL: 'right-align',
-        name: 'Start Align',
-    },
-};
-
-function dropDownActiveClass(active: boolean) {
-    if (active) {
-        return 'active dropdown-item-active';
-    } else {
-        return '';
-    }
-}
-
-function BlockFormatDropDown({
-    editor,
-    blockType,
-    rootType,
-    disabled = false,
-}: {
-    blockType: keyof typeof blockTypeToBlockName;
-    rootType: keyof typeof rootTypeToRootName;
-    editor: LexicalEditor;
-    disabled?: boolean;
-}): JSX.Element {
-    const formatParagraph = () => {
-        editor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection)) {
-                $setBlocksType(selection, () => $createParagraphNode());
-            }
-        });
-    };
-
-    const formatHeading = (headingSize: HeadingTagType) => {
-        if (blockType !== headingSize) {
-            editor.update(() => {
-                const selection = $getSelection();
-                $setBlocksType(selection, () => $createHeadingNode(headingSize));
-            });
-        }
-    };
-
-    const formatBulletList = () => {
-        if (blockType !== 'bullet') {
-            editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
-        } else {
-            formatParagraph();
-        }
-    };
-
-    const formatCheckList = () => {
-        if (blockType !== 'check') {
-            editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
-        } else {
-            formatParagraph();
-        }
-    };
-
-    const formatNumberedList = () => {
-        if (blockType !== 'number') {
-            editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
-        } else {
-            formatParagraph();
-        }
-    };
-
-    const formatQuote = () => {
-        if (blockType !== 'quote') {
-            editor.update(() => {
-                const selection = $getSelection();
-                $setBlocksType(selection, () => $createQuoteNode());
-            });
-        }
-    };
-
-    const formatCode = () => {
-        if (blockType !== 'code') {
-            editor.update(() => {
-                let selection = $getSelection();
-
-                if (selection !== null) {
-                    if (selection.isCollapsed()) {
-                        $setBlocksType(selection, () => $createCodeNode());
-                    } else {
-                        const textContent = selection.getTextContent();
-                        const codeNode = $createCodeNode();
-                        selection.insertNodes([codeNode]);
-                        selection = $getSelection();
-                        if ($isRangeSelection(selection)) {
-                            selection.insertRawText(textContent);
-                        }
-                    }
-                }
-            });
-        }
-    };
-
-    return (
-        <DropDown
-        disabled= { disabled }
-    buttonClassName = "toolbar-item block-controls"
-    buttonIconClassName = { 'icon block-type ' + blockType }
-    buttonLabel = { blockTypeToBlockName[blockType]}
-    buttonAriaLabel = "Formatting options for text style" >
-        <DropDownItem
-          className={ 'item ' + dropDownActiveClass(blockType === 'paragraph') }
-    onClick = { formatParagraph } >
-        <i className="icon paragraph" />
-            <span className="text" > Normal < /span>
-                < /DropDownItem>
-                < DropDownItem
-    className = { 'item ' + dropDownActiveClass(blockType === 'h1') }
-    onClick = {() => formatHeading('h1')
-}>
-    <i className="icon h1" />
-        <span className="text" > Heading 1 < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'h2') }
-onClick = {() => formatHeading('h2')}>
-    <i className="icon h2" />
-        <span className="text" > Heading 2 < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'h3') }
-onClick = {() => formatHeading('h3')}>
-    <i className="icon h3" />
-        <span className="text" > Heading 3 < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'bullet') }
-onClick = { formatBulletList } >
-    <i className="icon bullet-list" />
-        <span className="text" > Bullet List < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'number') }
-onClick = { formatNumberedList } >
-    <i className="icon numbered-list" />
-        <span className="text" > Numbered List < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'check') }
-onClick = { formatCheckList } >
-    <i className="icon check-list" />
-        <span className="text" > Check List < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'quote') }
-onClick = { formatQuote } >
-    <i className="icon quote" />
-        <span className="text" > Quote < /span>
-            < /DropDownItem>
-            < DropDownItem
-className = { 'item ' + dropDownActiveClass(blockType === 'code') }
-onClick = { formatCode } >
-    <i className="icon code" />
-        <span className="text" > Code Block < /span>
-            < /DropDownItem>
-            < /DropDown>
-    );
-  }
-
-function Divider(): JSX.Element {
-    return <div className="divider" />;
-}
-
-function FontDropDown({
-    editor,
-    value,
-    style,
-    disabled = false,
-}: {
-    editor: LexicalEditor;
-    value: string;
-    style: string;
-    disabled?: boolean;
-}): JSX.Element {
-    const handleClick = useCallback(
-        (option: string) => {
-            editor.update(() => {
-                const selection = $getSelection();
-                if (selection !== null) {
-                    $patchStyleText(selection, {
-                        [style]: option,
-                    });
-                }
-            });
-        },
-        [editor, style],
-    );
-
-    const buttonAriaLabel =
-        style === 'font-family'
-            ? 'Formatting options for font family'
-            : 'Formatting options for font size';
-
-    return (
-        <DropDown
-        disabled= { disabled }
-    buttonClassName = { 'toolbar-item ' + style }
-    buttonLabel = { value }
-    buttonIconClassName = {
-        style === 'font-family' ? 'icon block-type font-family' : ''
-}
-buttonAriaLabel = { buttonAriaLabel } >
-    {(style === 'font-family' ? FONT_FAMILY_OPTIONS : FONT_SIZE_OPTIONS).map(
-        ([option, text]) => (
-            <DropDownItem
-              className= {`item ${dropDownActiveClass(value === option)} ${style === 'font-size' ? 'fontsize-item' : ''
-                }`}
-        onClick = {() => handleClick(option)}
-        key = { option } >
-        <span className="text" > { text } < /span>
-    < /DropDownItem>
-    ),
-        )}
-</DropDown>
-    );
-  }
-
-function ElementFormatDropdown({
-    editor,
-    value,
-    isRTL,
-    disabled = false,
-}: {
-    editor: LexicalEditor;
-    value: ElementFormatType;
-    isRTL: boolean;
-    disabled: boolean;
-}) {
-    const formatOption = ELEMENT_FORMAT_OPTIONS[value || 'left'];
-
-    return (
-        <DropDown
-        disabled= { disabled }
-    buttonLabel = { formatOption.name }
-    buttonIconClassName = {`icon ${isRTL ? formatOption.iconRTL : formatOption.icon
-        }`
-}
-buttonClassName = "toolbar-item spaced alignment"
-buttonAriaLabel = "Formatting options for text alignment" >
-    <DropDownItem
-          onClick={
-    () => {
-        editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'left');
-    }
-}
-className = "item" >
-    <i className="icon left-align" />
-        <span className="text" > Left Align < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'center');
-}}
-className = "item" >
-    <i className="icon center-align" />
-        <span className="text" > Center Align < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'right');
-}}
-className = "item" >
-    <i className="icon right-align" />
-        <span className="text" > Right Align < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'justify');
-}}
-className = "item" >
-    <i className="icon justify-align" />
-        <span className="text" > Justify Align < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'start');
-}}
-className = "item" >
-    <i
-            className={
-    `icon ${isRTL
-        ? ELEMENT_FORMAT_OPTIONS.start.iconRTL
-        : ELEMENT_FORMAT_OPTIONS.start.icon
-        }`
-}
-/>
-    < span className = "text" > Start Align < /span>
-        < /DropDownItem>
-        < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'end');
-}}
-className = "item" >
-    <i
-            className={
-    `icon ${isRTL
-        ? ELEMENT_FORMAT_OPTIONS.end.iconRTL
-        : ELEMENT_FORMAT_OPTIONS.end.icon
-        }`
-}
-/>
-    < span className = "text" > End Align < /span>
-        < /DropDownItem>
-        < Divider />
-        <DropDownItem
-          onClick={
-    () => {
-        editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
-    }
-}
-className = "item" >
-    <i className={ 'icon ' + (isRTL ? 'indent' : 'outdent') } />
-        < span className = "text" > Outdent < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
-}}
-className = "item" >
-    <i className={ 'icon ' + (isRTL ? 'outdent' : 'indent') } />
-        < span className = "text" > Indent < /span>
-            < /DropDownItem>
-            < /DropDown>
-    );
-  }
-
-export function ToolbarPlugin({
-    setIsLinkEditMode,
-}: {
-    setIsLinkEditMode: Dispatch<boolean>;
-}): JSX.Element {
-    const [editor] = useLexicalComposerContext();
-    const [activeEditor, setActiveEditor] = useState(editor);
-    const [blockType, setBlockType] =
-        useState<keyof typeof blockTypeToBlockName>('paragraph');
-    const [rootType, setRootType] =
-        useState<keyof typeof rootTypeToRootName>('root');
-    const [selectedElementKey, setSelectedElementKey] = useState<NodeKey | null>(
-        null,
-    );
-    const [fontSize, setFontSize] = useState<string>('15px');
-    const [fontColor, setFontColor] = useState<string>('#000');
-    const [bgColor, setBgColor] = useState<string>('#fff');
-    const [fontFamily, setFontFamily] = useState<string>('Arial');
-    const [elementFormat, setElementFormat] = useState<ElementFormatType>('left');
-    const [isLink, setIsLink] = useState(false);
-    const [isBold, setIsBold] = useState(false);
-    const [isItalic, setIsItalic] = useState(false);
-    const [isUnderline, setIsUnderline] = useState(false);
-    const [isStrikethrough, setIsStrikethrough] = useState(false);
-    const [isSubscript, setIsSubscript] = useState(false);
-    const [isSuperscript, setIsSuperscript] = useState(false);
-    const [isCode, setIsCode] = useState(false);
-    const [canUndo, setCanUndo] = useState(false);
-    const [canRedo, setCanRedo] = useState(false);
-    const [modal, showModal] = useModal();
-    const [isRTL, setIsRTL] = useState(false);
-    const [codeLanguage, setCodeLanguage] = useState<string>('');
-    const [isEditable, setIsEditable] = useState(() => editor.isEditable());
-
-    const $updateToolbar = useCallback(() => {
-        const selection = $getSelection();
-        if ($isRangeSelection(selection)) {
-            const anchorNode = selection.anchor.getNode();
-            let element =
-                anchorNode.getKey() === 'root'
-                    ? anchorNode
-                    : $findMatchingParent(anchorNode, (e) => {
-                        const parent = e.getParent();
-                        return parent !== null && $isRootOrShadowRoot(parent);
-                    });
-
-            if (element === null) {
-                element = anchorNode.getTopLevelElementOrThrow();
-            }
-
-            const elementKey = element.getKey();
-            const elementDOM = activeEditor.getElementByKey(elementKey);
-
-            // Update text format
-            setIsBold(selection.hasFormat('bold'));
-            setIsItalic(selection.hasFormat('italic'));
-            setIsUnderline(selection.hasFormat('underline'));
-            setIsStrikethrough(selection.hasFormat('strikethrough'));
-            setIsSubscript(selection.hasFormat('subscript'));
-            setIsSuperscript(selection.hasFormat('superscript'));
-            setIsCode(selection.hasFormat('code'));
-            setIsRTL($isParentElementRTL(selection));
-
-            // Update links
-            const node = getSelectedNode(selection);
-            const parent = node.getParent();
-            if ($isLinkNode(parent) || $isLinkNode(node)) {
-                setIsLink(true);
-            } else {
-                setIsLink(false);
-            }
-
-            const tableNode = $findMatchingParent(node, $isTableNode);
-            if ($isTableNode(tableNode)) {
-                setRootType('table');
-            } else {
-                setRootType('root');
-            }
-
-            if (elementDOM !== null) {
-                setSelectedElementKey(elementKey);
-                if ($isListNode(element)) {
-                    const parentList = $getNearestNodeOfType<ListNode>(
-                        anchorNode,
-                        ListNode,
-                    );
-                    const type = parentList
-                        ? parentList.getListType()
-                        : element.getListType();
-                    setBlockType(type);
-                } else {
-                    const type = $isHeadingNode(element)
-                        ? element.getTag()
-                        : element.getType();
-                    if (type in blockTypeToBlockName) {
-                        setBlockType(type as keyof typeof blockTypeToBlockName);
-                    }
-                    if ($isCodeNode(element)) {
-                        const language =
-                            element.getLanguage() as keyof typeof CODE_LANGUAGE_MAP;
-                        setCodeLanguage(
-                            language ? CODE_LANGUAGE_MAP[language] || language : '',
-                        );
-                        return;
-                    }
-                }
-            }
-            // Handle buttons
-            setFontSize(
-                $getSelectionStyleValueForProperty(selection, 'font-size', '15px'),
-            );
-            setFontColor(
-                $getSelectionStyleValueForProperty(selection, 'color', '#000'),
-            );
-            setBgColor(
-                $getSelectionStyleValueForProperty(
-                    selection,
-                    'background-color',
-                    '#fff',
-                ),
-            );
-            setFontFamily(
-                $getSelectionStyleValueForProperty(selection, 'font-family', 'Arial'),
-            );
-            let matchingParent;
-            if ($isLinkNode(parent)) {
-                // If node is a link, we need to fetch the parent paragraph node to set format
-                matchingParent = $findMatchingParent(
-                    node,
-                    (parentNode) => $isElementNode(parentNode) && !parentNode.isInline(),
-                );
-            }
-
-            // If matchingParent is a valid node, pass it's format type
-            setElementFormat(
-                $isElementNode(matchingParent)
-                    ? matchingParent.getFormatType()
-                    : $isElementNode(node)
-                        ? node.getFormatType()
-                        : parent?.getFormatType() || 'left',
-            );
-        }
-    }, [activeEditor]);
-
-    useEffect(() => {
-        return editor.registerCommand(
-            SELECTION_CHANGE_COMMAND,
-            (_payload, newEditor) => {
-                $updateToolbar();
-                setActiveEditor(newEditor);
-                return false;
-            },
-            COMMAND_PRIORITY_CRITICAL,
-        );
-    }, [editor, $updateToolbar]);
-
-    useEffect(() => {
-        return mergeRegister(
-            editor.registerEditableListener((editable) => {
-                setIsEditable(editable);
-            }),
-            activeEditor.registerUpdateListener(({ editorState }) => {
-                editorState.read(() => {
-                    $updateToolbar();
-                });
-            }),
-            activeEditor.registerCommand<boolean>(
-                CAN_UNDO_COMMAND,
-                (payload) => {
-                    setCanUndo(payload);
-                    return false;
-                },
-                COMMAND_PRIORITY_CRITICAL,
-            ),
-            activeEditor.registerCommand<boolean>(
-                CAN_REDO_COMMAND,
-                (payload) => {
-                    setCanRedo(payload);
-                    return false;
-                },
-                COMMAND_PRIORITY_CRITICAL,
-            ),
-        );
-    }, [$updateToolbar, activeEditor, editor]);
-
-    useEffect(() => {
-        return activeEditor.registerCommand(
-            KEY_MODIFIER_COMMAND,
-            (payload) => {
-                const event: KeyboardEvent = payload;
-                const { code, ctrlKey, metaKey } = event;
-
-                if (code === 'KeyK' && (ctrlKey || metaKey)) {
-                    event.preventDefault();
-                    let url: string | null;
-                    if (!isLink) {
-                        setIsLinkEditMode(true);
-                        url = sanitizeUrl('https://');
-                    } else {
-                        setIsLinkEditMode(false);
-                        url = null;
-                    }
-                    return activeEditor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
-                }
-                return false;
-            },
-            COMMAND_PRIORITY_NORMAL,
-        );
-    }, [activeEditor, isLink, setIsLinkEditMode]);
-
-    const applyStyleText = useCallback(
-        (styles: Record<string, string>, skipHistoryStack?: boolean) => {
-            activeEditor.update(
-                () => {
-                    const selection = $getSelection();
-                    if (selection !== null) {
-                        $patchStyleText(selection, styles);
-                    }
-                },
-                skipHistoryStack ? { tag: 'historic' } : {},
-            );
-        },
-        [activeEditor],
-    );
-
-    const clearFormatting = useCallback(() => {
-        activeEditor.update(() => {
-            const selection = $getSelection();
-            if ($isRangeSelection(selection) || $isTableSelection(selection)) {
-                const anchor = selection.anchor;
-                const focus = selection.focus;
-                const nodes = selection.getNodes();
-
-                if (anchor.key === focus.key && anchor.offset === focus.offset) {
-                    return;
-                }
-
-                nodes.forEach((node, idx) => {
-                    // We split the first and last node by the selection
-                    // So that we don't format unselected text inside those nodes
-                    if ($isTextNode(node)) {
-                        // Use a separate variable to ensure TS does not lose the refinement
-                        let textNode = node;
-                        if (idx === 0 && anchor.offset !== 0) {
-                            textNode = textNode.splitText(anchor.offset)[1] || textNode;
-                        }
-                        if (idx === nodes.length - 1) {
-                            textNode = textNode.splitText(focus.offset)[0] || textNode;
-                        }
-
-                        if (textNode.__style !== '') {
-                            textNode.setStyle('');
-                        }
-                        if (textNode.__format !== 0) {
-                            textNode.setFormat(0);
-                            $getNearestBlockElementAncestorOrThrow(textNode).setFormat('');
-                        }
-                        node = textNode;
-                    } else if ($isHeadingNode(node) || $isQuoteNode(node)) {
-                        node.replace($createParagraphNode(), true);
-                    } else if ($isDecoratorBlockNode(node)) {
-                        node.setFormat('');
-                    }
-                });
-            }
-        });
-    }, [activeEditor]);
-
-    const onFontColorSelect = useCallback(
-        (value: string, skipHistoryStack: boolean) => {
-            applyStyleText({ color: value }, skipHistoryStack);
-        },
-        [applyStyleText],
-    );
-
-    const onBgColorSelect = useCallback(
-        (value: string, skipHistoryStack: boolean) => {
-            applyStyleText({ 'background-color': value }, skipHistoryStack);
-        },
-        [applyStyleText],
-    );
-
-    const insertLink = useCallback(() => {
-        if (!isLink) {
-            setIsLinkEditMode(true);
-            editor.dispatchCommand(TOGGLE_LINK_COMMAND, sanitizeUrl('https://'));
-        } else {
-            setIsLinkEditMode(false);
-            editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
-        }
-    }, [editor, isLink, setIsLinkEditMode]);
-
-    const onCodeLanguageSelect = useCallback(
-        (value: string) => {
-            activeEditor.update(() => {
-                if (selectedElementKey !== null) {
-                    const node = $getNodeByKey(selectedElementKey);
-                    if ($isCodeNode(node)) {
-                        node.setLanguage(value);
-                    }
-                }
-            });
-        },
-        [activeEditor, selectedElementKey],
-    );
-    const insertGifOnClick = (payload: InsertImagePayload) => {
-        activeEditor.dispatchCommand(INSERT_IMAGE_COMMAND, payload);
-    };
-
-    return (
-        <div className= "toolbar" >
-        <button
-          disabled={ !canUndo || !isEditable }
-    onClick = {() => {
-        activeEditor.dispatchCommand(UNDO_COMMAND, undefined);
-    }
-}
-title = { IS_APPLE? 'Undo (⌘Z)': 'Undo (Ctrl+Z)' }
-type = "button"
-className = "toolbar-item spaced"
-aria - label="Undo" >
-    <i className="format undo" />
-        </button>
-        < button
-disabled = {!canRedo || !isEditable}
-onClick = {() => {
-    activeEditor.dispatchCommand(REDO_COMMAND, undefined);
-}}
-title = { IS_APPLE? 'Redo (⌘Y)': 'Redo (Ctrl+Y)' }
-type = "button"
-className = "toolbar-item"
-aria - label="Redo" >
-    <i className="format redo" />
-        </button>
-        < Divider />
-        { blockType in blockTypeToBlockName && activeEditor === editor && (
-            <>
-            <BlockFormatDropDown
-              disabled={ !isEditable }
-blockType = { blockType }
-rootType = { rootType }
-editor = { editor }
-    />
-    <Divider />
-    < />
-        )}
-{
-    blockType === 'code' ? (
-        <DropDown
-            disabled= {!isEditable
-}
-buttonClassName = "toolbar-item code-language"
-buttonLabel = { getLanguageFriendlyName(codeLanguage) }
-buttonAriaLabel = "Select language" >
-{
-    CODE_LANGUAGE_OPTIONS.map(([value, name]) => {
-        return (
-            <DropDownItem
-                  className= {`item ${dropDownActiveClass(
-                value === codeLanguage,
-            )}`
-    }
-                  onClick = {() => onCodeLanguageSelect(value)}
-key = { value } >
-    <span className="text" > { name } < /span>
-        < /DropDownItem>
-              );
-            })}
-</DropDown>
-        ) : (
-    <>
-    <FontDropDown
-              disabled= {!isEditable}
-style = { 'font-family'}
-value = { fontFamily }
-editor = { editor }
-    />
-    <Divider />
-    < FontSize
-selectionFontSize = { fontSize.slice(0, -2) }
-editor = { editor }
-disabled = {!isEditable}
-/>
-    < Divider />
-    <button
-              disabled={ !isEditable }
-onClick = {() => {
-    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
-}}
-className = { 'toolbar-item spaced ' + (isBold ? 'active' : '') }
-title = { IS_APPLE? 'Bold (⌘B)': 'Bold (Ctrl+B)' }
-type = "button"
-aria - label={
-    `Format text as bold. Shortcut: ${IS_APPLE ? '⌘B' : 'Ctrl+B'
-        }`
-}>
-    <i className="format bold" />
-        </button>
-        < button
-disabled = {!isEditable}
-onClick = {() => {
-    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
-}}
-className = { 'toolbar-item spaced ' + (isItalic ? 'active' : '') }
-title = { IS_APPLE? 'Italic (⌘I)': 'Italic (Ctrl+I)' }
-type = "button"
-aria - label={
-    `Format text as italics. Shortcut: ${IS_APPLE ? '⌘I' : 'Ctrl+I'
-        }`
-}>
-    <i className="format italic" />
-        </button>
-        < button
-disabled = {!isEditable}
-onClick = {() => {
-    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
-}}
-className = { 'toolbar-item spaced ' + (isUnderline ? 'active' : '') }
-title = { IS_APPLE? 'Underline (⌘U)': 'Underline (Ctrl+U)' }
-type = "button"
-aria - label={
-    `Format text to underlined. Shortcut: ${IS_APPLE ? '⌘U' : 'Ctrl+U'
-        }`
-}>
-    <i className="format underline" />
-        </button>
-        < button
-disabled = {!isEditable}
-onClick = {() => {
-    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
-}}
-className = { 'toolbar-item spaced ' + (isCode ? 'active' : '') }
-title = "Insert code block"
-type = "button"
-aria - label="Insert code block" >
-    <i className="format code" />
-        </button>
-        < button
-disabled = {!isEditable}
-onClick = { insertLink }
-className = { 'toolbar-item spaced ' + (isLink ? 'active' : '') }
-aria - label="Insert link"
-title = "Insert link"
-type = "button" >
-    <i className="format link" />
-        </button>
-        < DropdownColorPicker
-disabled = {!isEditable}
-buttonClassName = "toolbar-item color-picker"
-buttonAriaLabel = "Formatting text color"
-buttonIconClassName = "icon font-color"
-color = { fontColor }
-onChange = { onFontColorSelect }
-title = "text color"
-    />
-    <DropdownColorPicker
-              disabled={ !isEditable }
-buttonClassName = "toolbar-item color-picker"
-buttonAriaLabel = "Formatting background color"
-buttonIconClassName = "icon bg-color"
-color = { bgColor }
-onChange = { onBgColorSelect }
-title = "bg color"
-    />
-    <DropDown
-              disabled={ !isEditable }
-buttonClassName = "toolbar-item spaced"
-buttonLabel = ""
-buttonAriaLabel = "Formatting options for additional text styles"
-buttonIconClassName = "icon dropdown-more" >
-    <DropDownItem
-                onClick={
-    () => {
-        activeEditor.dispatchCommand(
-            FORMAT_TEXT_COMMAND,
-            'strikethrough',
-        );
-    }
-}
-className = { 'item ' + dropDownActiveClass(isStrikethrough) }
-title = "Strikethrough"
-aria - label="Format text with a strikethrough" >
-    <i className="icon strikethrough" />
-        <span className="text" > Strikethrough < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'subscript');
-}}
-className = { 'item ' + dropDownActiveClass(isSubscript) }
-title = "Subscript"
-aria - label="Format text with a subscript" >
-    <i className="icon subscript" />
-        <span className="text" > Subscript < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    activeEditor.dispatchCommand(
-        FORMAT_TEXT_COMMAND,
-        'superscript',
-    );
-}}
-className = { 'item ' + dropDownActiveClass(isSuperscript) }
-title = "Superscript"
-aria - label="Format text with a superscript" >
-    <i className="icon superscript" />
-        <span className="text" > Superscript < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = { clearFormatting }
-className = "item"
-title = "Clear text formatting"
-aria - label="Clear all text formatting" >
-    <i className="icon clear" />
-        <span className="text" > Clear Formatting < /span>
-            < /DropDownItem>
-            < /DropDown>
-            < Divider />
-            <DropDown
-              disabled={ !isEditable }
-buttonClassName = "toolbar-item spaced"
-buttonLabel = "Insert"
-buttonAriaLabel = "Insert specialized editor node"
-buttonIconClassName = "icon plus" >
-    <DropDownItem
-                onClick={
-    () => {
-        activeEditor.dispatchCommand(
-            INSERT_HORIZONTAL_RULE_COMMAND,
-            undefined,
-        );
-    }
-}
-className = "item" >
-    <i className="icon horizontal-rule" />
-        <span className="text" > Horizontal Rule < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    activeEditor.dispatchCommand(INSERT_PAGE_BREAK, undefined);
-}}
-className = "item" >
-    <i className="icon page-break" />
-        <span className="text" > Page Break < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    showModal('Insert Image', (onClose) => (
-        <InsertImageDialog
-                      activeEditor= { activeEditor }
-                      onClose = { onClose }
-        />
-                  ));
-}}
-className = "item" >
-    <i className="icon image" />
-        <span className="text" > Image < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    showModal('Insert Inline Image', (onClose) => (
-        <InsertInlineImageDialog
-                      activeEditor= { activeEditor }
-                      onClose = { onClose }
-        />
-                  ));
-}}
-className = "item" >
-    <i className="icon image" />
-        <span className="text" > Inline Image < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() =>
-insertGifOnClick({
-    altText: 'Cat typing on a laptop',
-    src: catTypingGif,
-})
-                }
-className = "item" >
-    <i className="icon gif" />
-        <span className="text" > GIF < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    activeEditor.dispatchCommand(
-        INSERT_EXCALIDRAW_COMMAND,
-        undefined,
-    );
-}}
-className = "item" >
-    <i className="icon diagram-2" />
-        <span className="text" > Excalidraw < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    showModal('Insert Table', (onClose) => (
-        <InsertTableDialog
-                      activeEditor= { activeEditor }
-                      onClose = { onClose }
-        />
-                  ));
-}}
-className = "item" >
-    <i className="icon table" />
-        <span className="text" > Table < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    showModal('Insert Poll', (onClose) => (
-        <InsertPollDialog
-                      activeEditor= { activeEditor }
-                      onClose = { onClose }
-        />
-                  ));
-}}
-className = "item" >
-    <i className="icon poll" />
-        <span className="text" > Poll < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    showModal('Insert Columns Layout', (onClose) => (
-        <InsertLayoutDialog
-                      activeEditor= { activeEditor }
-                      onClose = { onClose }
-        />
-                  ));
-}}
-className = "item" >
-    <i className="icon columns" />
-        <span className="text" > Columns Layout < /span>
-            < /DropDownItem>
-
-            < DropDownItem
-onClick = {() => {
-    showModal('Insert Equation', (onClose) => (
-        <InsertEquationDialog
-                      activeEditor= { activeEditor }
-                      onClose = { onClose }
-        />
-                  ));
-}}
-className = "item" >
-    <i className="icon equation" />
-        <span className="text" > Equation < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.update(() => {
-        const root = $getRoot();
-        const stickyNode = $createStickyNode(0, 0);
-        root.append(stickyNode);
-    });
-}}
-className = "item" >
-    <i className="icon sticky" />
-        <span className="text" > Sticky Note < /span>
-            < /DropDownItem>
-            < DropDownItem
-onClick = {() => {
-    editor.dispatchCommand(INSERT_COLLAPSIBLE_COMMAND, undefined);
-}}
-className = "item" >
-    <i className="icon caret-right" />
-        <span className="text" > Collapsible container < /span>
-            < /DropDownItem>
-{
-    EmbedConfigs.map((embedConfig) => (
-        <DropDownItem
-                  key= { embedConfig.type }
-                  onClick = {() => {
-        activeEditor.dispatchCommand(
-            INSERT_EMBED_COMMAND,
-            embedConfig.type,
-        );
-    }}
-className = "item" >
-    { embedConfig.icon }
-    < span className = "text" > { embedConfig.contentName } < /span>
-        < /DropDownItem>
-              ))}
-</DropDown>
-    < />
-        )}
-<Divider />
-    < ElementFormatDropdown
-disabled = {!isEditable}
-value = { elementFormat }
-editor = { editor }
-isRTL = { isRTL }
-    />
-
-    { modal }
-    < /div>
-    );
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-const MIN_ALLOWED_FONT_SIZE = 8;
-const MAX_ALLOWED_FONT_SIZE = 72;
-const DEFAULT_FONT_SIZE = 15;
-
-// eslint-disable-next-line no-shadow
-enum updateFontSizeType {
-    increment = 1,
-    decrement,
-}
-
-export function FontSize({
-    selectionFontSize,
-    disabled,
-    editor,
-}: {
-    selectionFontSize: string;
-    disabled: boolean;
-    editor: LexicalEditor;
-}) {
-    const [inputValue, setInputValue] = React.useState<string>(selectionFontSize);
-
-    /**
-     * Calculates the new font size based on the update type.
-     * @param currentFontSize - The current font size
-     * @param updateType - The type of change, either increment or decrement
-     * @returns the next font size
-     */
-    const calculateNextFontSize = (
-        currentFontSize: number,
-        updateType: updateFontSizeType | null,
-    ) => {
-        if (!updateType) {
-            return currentFontSize;
-        }
-
-        let updatedFontSize: number = currentFontSize;
-        switch (updateType) {
-            case updateFontSizeType.decrement:
-                switch (true) {
-                    case currentFontSize > MAX_ALLOWED_FONT_SIZE:
-                        updatedFontSize = MAX_ALLOWED_FONT_SIZE;
-                        break;
-                    case currentFontSize >= 48:
-                        updatedFontSize -= 12;
-                        break;
-                    case currentFontSize >= 24:
-                        updatedFontSize -= 4;
-                        break;
-                    case currentFontSize >= 14:
-                        updatedFontSize -= 2;
-                        break;
-                    case currentFontSize >= 9:
-                        updatedFontSize -= 1;
-                        break;
-                    default:
-                        updatedFontSize = MIN_ALLOWED_FONT_SIZE;
-                        break;
-                }
-                break;
-
-            case updateFontSizeType.increment:
-                switch (true) {
-                    case currentFontSize < MIN_ALLOWED_FONT_SIZE:
-                        updatedFontSize = MIN_ALLOWED_FONT_SIZE;
-                        break;
-                    case currentFontSize < 12:
-                        updatedFontSize += 1;
-                        break;
-                    case currentFontSize < 20:
-                        updatedFontSize += 2;
-                        break;
-                    case currentFontSize < 36:
-                        updatedFontSize += 4;
-                        break;
-                    case currentFontSize <= 60:
-                        updatedFontSize += 12;
-                        break;
-                    default:
-                        updatedFontSize = MAX_ALLOWED_FONT_SIZE;
-                        break;
-                }
-                break;
-
-            default:
-                break;
-        }
-        return updatedFontSize;
-    };
-    /**
-     * Patches the selection with the updated font size.
-     */
-
-    const updateFontSizeInSelection = React.useCallback(
-        (newFontSize: string | null, updateType: updateFontSizeType | null) => {
-            const getNextFontSize = (prevFontSize: string | null): string => {
-                if (!prevFontSize) {
-                    prevFontSize = `${DEFAULT_FONT_SIZE}px`;
-                }
-                prevFontSize = prevFontSize.slice(0, -2);
-                const nextFontSize = calculateNextFontSize(
-                    Number(prevFontSize),
-                    updateType,
-                );
-                return `${nextFontSize}px`;
-            };
-
-            editor.update(() => {
-                if (editor.isEditable()) {
-                    const selection = $getSelection();
-                    if (selection !== null) {
-                        $patchStyleText(selection, {
-                            'font-size': newFontSize || getNextFontSize,
-                        });
-                    }
-                }
-            });
-        },
-        [editor],
-    );
-
-    const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        const inputValueNumber = Number(inputValue);
-
-        if (['e', 'E', '+', '-'].includes(e.key) || isNaN(inputValueNumber)) {
-            e.preventDefault();
-            setInputValue('');
-            return;
-        }
-
-        if (e.key === 'Enter') {
-            e.preventDefault();
-
-            let updatedFontSize = inputValueNumber;
-            if (inputValueNumber > MAX_ALLOWED_FONT_SIZE) {
-                updatedFontSize = MAX_ALLOWED_FONT_SIZE;
-            } else if (inputValueNumber < MIN_ALLOWED_FONT_SIZE) {
-                updatedFontSize = MIN_ALLOWED_FONT_SIZE;
-            }
-            setInputValue(String(updatedFontSize));
-            updateFontSizeInSelection(String(updatedFontSize) + 'px', null);
-        }
-    };
-
-    const handleButtonClick = (updateType: updateFontSizeType) => {
-        if (inputValue !== '') {
-            const nextFontSize = calculateNextFontSize(
-                Number(inputValue),
-                updateType,
-            );
-            updateFontSizeInSelection(String(nextFontSize) + 'px', null);
-        } else {
-            updateFontSizeInSelection(null, updateType);
-        }
-    };
-
-    React.useEffect(() => {
-        setInputValue(selectionFontSize);
-    }, [selectionFontSize]);
-
-    return (
-        <>
-        <button
-        type= "button"
-    disabled = {
-        disabled ||
-        (selectionFontSize !== '' &&
-            Number(inputValue) <= MIN_ALLOWED_FONT_SIZE)
-}
-onClick = {() => handleButtonClick(updateFontSizeType.decrement)}
-className = "toolbar-item font-decrement" >
-    <i className="format minus-icon" />
-        </button>
-
-        < input
-type = "number"
-value = { inputValue }
-disabled = { disabled }
-className = "toolbar-item font-size-input"
-min = { MIN_ALLOWED_FONT_SIZE }
-max = { MAX_ALLOWED_FONT_SIZE }
-onChange = {(e) => setInputValue(e.target.value)}
-onKeyDown = { handleKeyPress }
-    />
-
-    <button
-        type="button"
-disabled = {
-    disabled ||
-    (selectionFontSize !== '' &&
-        Number(inputValue) >= MAX_ALLOWED_FONT_SIZE)
-        }
-onClick = {() => handleButtonClick(updateFontSizeType.increment)}
-className = "toolbar-item font-increment" >
-    <i className="format add-icon" />
-        </button>
-        < />
-  );
-}
-
-
-
-export function TreeViewPlugin(): JSX.Element {
-    const [editor] = useLexicalComposerContext();
-    return (
-        <TreeView
-      viewClassName= "tree-view-output"
-    treeTypeButtonClassName = "debug-treetype-button"
-    timeTravelPanelClassName = "debug-timetravel-panel"
-    timeTravelButtonClassName = "debug-timetravel-button"
-    timeTravelPanelSliderClassName = "debug-timetravel-panel-slider"
-    timeTravelPanelButtonClassName = "debug-timetravel-panel-button"
-    editor = { editor }
-        />
-  );
-}
-
-export const INSERT_TWEET_COMMAND: LexicalCommand<string> = createCommand(
-    'INSERT_TWEET_COMMAND',
-);
-
-export function TwitterPlugin(): JSX.Element | null {
-    const [editor] = useLexicalComposerContext();
-
-    useEffect(() => {
-        if (!editor.hasNodes([TweetNode])) {
-            throw new Error('TwitterPlugin: TweetNode not registered on editor');
-        }
-
-        return editor.registerCommand<string>(
-            INSERT_TWEET_COMMAND,
-            (payload) => {
-                const tweetNode = $createTweetNode(payload);
-                $insertNodeToNearestRoot(tweetNode);
-
-                return true;
-            },
-            COMMAND_PRIORITY_EDITOR,
-        );
-    }, [editor]);
-
-    return null;
-}
-
-
-
-
-const validInputTypes = new Set([
-    'insertText',
-    'insertCompositionText',
-    'insertFromComposition',
-    'insertLineBreak',
-    'insertParagraph',
-    'deleteCompositionText',
-    'deleteContentBackward',
-    'deleteByComposition',
-    'deleteContent',
-    'deleteContentForward',
-    'deleteWordBackward',
-    'deleteWordForward',
-    'deleteHardLineBackward',
-    'deleteSoftLineBackward',
-    'deleteHardLineForward',
-    'deleteSoftLineForward',
-]);
-
-export function TypingPerfPlugin(): JSX.Element | null {
-    const report = useReport();
-    useEffect(() => {
-        let start = 0;
-        let timerId: ReturnType<typeof setTimeout> | null;
-        let keyPressTimerId: ReturnType<typeof setTimeout> | null;
-        let log: Array<DOMHighResTimeStamp> = [];
-        let invalidatingEvent = false;
-
-        const measureEventEnd = function logKeyPress() {
-            if (keyPressTimerId != null) {
-                if (invalidatingEvent) {
-                    invalidatingEvent = false;
-                } else {
-                    log.push(performance.now() - start);
-                }
-
-                clearTimeout(keyPressTimerId);
-                keyPressTimerId = null;
-            }
-        };
-
-        const measureEventStart = function measureEvent() {
-            if (timerId != null) {
-                clearTimeout(timerId);
-                timerId = null;
-            }
-
-            // We use a setTimeout(0) instead of requestAnimationFrame, due to
-            // inconsistencies between the sequencing of rAF in different browsers.
-            keyPressTimerId = setTimeout(measureEventEnd, 0);
-            // Schedule a timer to report the results.
-            timerId = setTimeout(() => {
-                const total = log.reduce((a, b) => a + b, 0);
-                const reportedText =
-                    'Typing Perf: ' + Math.round((total / log.length) * 100) / 100 + 'ms';
-                report(reportedText);
-                log = [];
-            }, 2000);
-            // Make the time after we do the previous logic, so we don't measure the overhead
-            // for it all.
-            start = performance.now();
-        };
-
-        const beforeInputHandler = function beforeInputHandler(event: InputEvent) {
-            if (!validInputTypes.has(event.inputType) || invalidatingEvent) {
-                invalidatingEvent = false;
-                return;
-            }
-
-            measureEventStart();
-        };
-
-        const keyDownHandler = function keyDownHandler(event: KeyboardEvent) {
-            const keyCode = event.keyCode;
-
-            if (keyCode === 8 || keyCode === 13) {
-                measureEventStart();
-            }
-        };
-
-        const pasteHandler = function pasteHandler() {
-            invalidatingEvent = true;
-        };
-
-        const cutHandler = function cutHandler() {
-            invalidatingEvent = true;
-        };
-
-        window.addEventListener('keydown', keyDownHandler, true);
-        window.addEventListener('selectionchange', measureEventEnd, true);
-        window.addEventListener('beforeinput', beforeInputHandler, true);
-        window.addEventListener('paste', pasteHandler, true);
-        window.addEventListener('cut', cutHandler, true);
-
-        return () => {
-            window.removeEventListener('keydown', keyDownHandler, true);
-            window.removeEventListener('selectionchange', measureEventEnd, true);
-            window.removeEventListener('beforeinput', beforeInputHandler, true);
-            window.removeEventListener('paste', pasteHandler, true);
-            window.removeEventListener('cut', cutHandler, true);
-        };
-    }, [report]);
-
-    return null;
-}
-
-export type InsertTableCommandPayload = Readonly<{
-    columns: string;
-    rows: string;
-    includeHeaders?: boolean;
-}>;
-
-export type CellContextShape = {
-    cellEditorConfig: null | CellEditorConfig;
-    cellEditorPlugins: null | JSX.Element | Array<JSX.Element>;
-    set: (
-        cellEditorConfig: null | CellEditorConfig,
-        cellEditorPlugins: null | JSX.Element | Array<JSX.Element>,
-    ) => void;
-};
-
-export type CellEditorConfig = Readonly<{
-    namespace: string;
-    nodes?: ReadonlyArray<Klass<LexicalNode>>;
-    onError: (error: Error, editor: LexicalEditor) => void;
-    readOnly?: boolean;
-    theme?: EditorThemeClasses;
-}>;
-
-export const INSERT_NEW_TABLE_COMMAND: LexicalCommand<InsertTableCommandPayload> =
-    createCommand('INSERT_NEW_TABLE_COMMAND');
-
-export const CellContext = createContext<CellContextShape>({
-    cellEditorConfig: null,
-    cellEditorPlugins: null,
-    set: () => {
-        // Empty
-    },
-});
-
-export function TableContext({ children }: { children: JSX.Element }) {
-    const [contextValue, setContextValue] = useState<{
-        cellEditorConfig: null | CellEditorConfig;
-        cellEditorPlugins: null | JSX.Element | Array<JSX.Element>;
-    }>({
-        cellEditorConfig: null,
-        cellEditorPlugins: null,
-    });
-    return (
-        <CellContext.Provider
-      value= { useMemo(
-        () => ({
-        cellEditorConfig: contextValue.cellEditorConfig,
-        cellEditorPlugins: contextValue.cellEditorPlugins,
-        set: (cellEditorConfig, cellEditorPlugins) => {
-            setContextValue({ cellEditorConfig, cellEditorPlugins });
-        },
-    }),
-        [contextValue.cellEditorConfig, contextValue.cellEditorPlugins],
-      )
-}>
-    { children }
-    < /CellContext.Provider>
-  );
-}
-
-export function InsertTableDialog({
-    activeEditor,
-    onClose,
-}: {
-    activeEditor: LexicalEditor;
-    onClose: () => void;
-}): JSX.Element {
-    const [rows, setRows] = useState('5');
-    const [columns, setColumns] = useState('5');
-    const [isDisabled, setIsDisabled] = useState(true);
-
-    useEffect(() => {
-        const row = Number(rows);
-        const column = Number(columns);
-        if (row && row > 0 && row <= 500 && column && column > 0 && column <= 50) {
-            setIsDisabled(false);
-        } else {
-            setIsDisabled(true);
-        }
-    }, [rows, columns]);
-
-    const onClick = () => {
-        activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {
-            columns,
-            rows,
-        });
-
-        onClose();
-    };
-
-    return (
-        <>
-        <TextInput
-        placeholder= { '# of rows (1-500)'}
-    label = "Rows"
-    onChange = { setRows }
-    value = { rows }
-    data - test - id="table-modal-rows"
-    type = "number"
-        />
-        <TextInput
-        placeholder={ '# of columns (1-50)' }
-    label = "Columns"
-    onChange = { setColumns }
-    value = { columns }
-    data - test - id="table-modal-columns"
-    type = "number"
-        />
-        <DialogActions data - test - id="table-model-confirm-insert" >
-            <Button disabled={ isDisabled } onClick = { onClick } >
-                Confirm
-                < /Button>
-                < /DialogActions>
-                < />
-  );
-}
-
-export function TablePlugin({
-    cellEditorConfig,
-    children,
-}: {
-    cellEditorConfig: CellEditorConfig;
-    children: JSX.Element | Array<JSX.Element>;
-}): JSX.Element | null {
-    const [editor] = useLexicalComposerContext();
-    const cellContext = useContext(CellContext);
-
-    useEffect(() => {
-        if (!editor.hasNodes([TableNode])) {
-            invariant(false, 'TablePlugin: TableNode is not registered on editor');
-        }
-
-        cellContext.set(cellEditorConfig, children);
-
-        return editor.registerCommand<InsertTableCommandPayload>(
-            INSERT_NEW_TABLE_COMMAND,
-            ({ columns, rows, includeHeaders }) => {
-                const tableNode = $createTableNodeWithDimensions(
-                    Number(rows),
-                    Number(columns),
-                    includeHeaders,
-                );
-                $insertNodes([tableNode]);
-                return true;
-            },
-            COMMAND_PRIORITY_EDITOR,
-        );
-    }, [cellContext, cellEditorConfig, children, editor]);
-
-    return null;
-}
+// const output = isRecording ? (
+//     <div className= "test-recorder-output" >
+//     <div className="test-recorder-toolbar" >
+//         <button
+//           className="test-recorder-button"
+// id = "test-recorder-button-snapshot"
+// title = "Insert snapshot"
+// onClick = { onSnapshotClick }
+//     />
+//     <button
+//           className="test-recorder-button"
+// id = "test-recorder-button-copy"
+// title = "Copy to clipboard"
+// onClick = { onCopyClick }
+//     />
+//     <button
+//           className="test-recorder-button"
+// id = "test-recorder-button-download"
+// title = "Download as a file"
+// onClick = { onDownloadClick }
+//     />
+//     </div>
+//     < pre id = "test-recorder" ref = { preRef } >
+//         { templatedTest }
+//         < /pre>
+//         < /div>
+//   ) : null;
+
+// return [button, output];
+// }
+
+// export function TestRecorderPlugin(): JSX.Element {
+//     const [editor] = useLexicalComposerContext();
+//     const [testRecorderButton, testRecorderOutput] = useTestRecorder(editor);
+
+//     return (
+//         <>
+//         { testRecorderButton }
+//       { testRecorderOutput }
+//     </>
+//   );
+// }
+
+// const blockTypeToBlockName = {
+//     bullet: 'Bulleted List',
+//     check: 'Check List',
+//     code: 'Code Block',
+//     h1: 'Heading 1',
+//     h2: 'Heading 2',
+//     h3: 'Heading 3',
+//     h4: 'Heading 4',
+//     h5: 'Heading 5',
+//     h6: 'Heading 6',
+//     number: 'Numbered List',
+//     paragraph: 'Normal',
+//     quote: 'Quote',
+// };
+
+// const rootTypeToRootName = {
+//     root: 'Root',
+//     table: 'Table',
+// };
+
+// function getCodeLanguageOptions(): [string, string][] {
+//     const options: [string, string][] = [];
+
+//     for (const [lang, friendlyName] of Object.entries(
+//         CODE_LANGUAGE_FRIENDLY_NAME_MAP,
+//     )) {
+//         options.push([lang, friendlyName]);
+//     }
+
+//     return options;
+// }
+
+// const CODE_LANGUAGE_OPTIONS = getCodeLanguageOptions();
+
+// const FONT_FAMILY_OPTIONS: [string, string][] = [
+//     ['Arial', 'Arial'],
+//     ['Courier New', 'Courier New'],
+//     ['Georgia', 'Georgia'],
+//     ['Times New Roman', 'Times New Roman'],
+//     ['Trebuchet MS', 'Trebuchet MS'],
+//     ['Verdana', 'Verdana'],
+// ];
+
+// const FONT_SIZE_OPTIONS: [string, string][] = [
+//     ['10px', '10px'],
+//     ['11px', '11px'],
+//     ['12px', '12px'],
+//     ['13px', '13px'],
+//     ['14px', '14px'],
+//     ['15px', '15px'],
+//     ['16px', '16px'],
+//     ['17px', '17px'],
+//     ['18px', '18px'],
+//     ['19px', '19px'],
+//     ['20px', '20px'],
+// ];
+
+// const ELEMENT_FORMAT_OPTIONS: {
+//     [key in Exclude<ElementFormatType, ''>]: {
+//         icon: string;
+//         iconRTL: string;
+//         name: string;
+//     };
+// } = {
+//     center: {
+//         icon: 'center-align',
+//         iconRTL: 'center-align',
+//         name: 'Center Align',
+//     },
+//     end: {
+//         icon: 'right-align',
+//         iconRTL: 'left-align',
+//         name: 'End Align',
+//     },
+//     justify: {
+//         icon: 'justify-align',
+//         iconRTL: 'justify-align',
+//         name: 'Justify Align',
+//     },
+//     left: {
+//         icon: 'left-align',
+//         iconRTL: 'left-align',
+//         name: 'Left Align',
+//     },
+//     right: {
+//         icon: 'right-align',
+//         iconRTL: 'right-align',
+//         name: 'Right Align',
+//     },
+//     start: {
+//         icon: 'left-align',
+//         iconRTL: 'right-align',
+//         name: 'Start Align',
+//     },
+// };
+
+// function dropDownActiveClass(active: boolean) {
+//     if (active) {
+//         return 'active dropdown-item-active';
+//     } else {
+//         return '';
+//     }
+// }
+
+// function BlockFormatDropDown({
+//     editor,
+//     blockType,
+//     rootType,
+//     disabled = false,
+// }: {
+//     blockType: keyof typeof blockTypeToBlockName;
+//     rootType: keyof typeof rootTypeToRootName;
+//     editor: LexicalEditor;
+//     disabled?: boolean;
+// }): JSX.Element {
+//     const formatParagraph = () => {
+//         editor.update(() => {
+//             const selection = $getSelection();
+//             if ($isRangeSelection(selection)) {
+//                 $setBlocksType(selection, () => $createParagraphNode());
+//             }
+//         });
+//     };
+
+//     const formatHeading = (headingSize: HeadingTagType) => {
+//         if (blockType !== headingSize) {
+//             editor.update(() => {
+//                 const selection = $getSelection();
+//                 $setBlocksType(selection, () => $createHeadingNode(headingSize));
+//             });
+//         }
+//     };
+
+//     const formatBulletList = () => {
+//         if (blockType !== 'bullet') {
+//             editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined);
+//         } else {
+//             formatParagraph();
+//         }
+//     };
+
+//     const formatCheckList = () => {
+//         if (blockType !== 'check') {
+//             editor.dispatchCommand(INSERT_CHECK_LIST_COMMAND, undefined);
+//         } else {
+//             formatParagraph();
+//         }
+//     };
+
+//     const formatNumberedList = () => {
+//         if (blockType !== 'number') {
+//             editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined);
+//         } else {
+//             formatParagraph();
+//         }
+//     };
+
+//     const formatQuote = () => {
+//         if (blockType !== 'quote') {
+//             editor.update(() => {
+//                 const selection = $getSelection();
+//                 $setBlocksType(selection, () => $createQuoteNode());
+//             });
+//         }
+//     };
+
+//     const formatCode = () => {
+//         if (blockType !== 'code') {
+//             editor.update(() => {
+//                 let selection = $getSelection();
+
+//                 if (selection !== null) {
+//                     if (selection.isCollapsed()) {
+//                         $setBlocksType(selection, () => $createCodeNode());
+//                     } else {
+//                         const textContent = selection.getTextContent();
+//                         const codeNode = $createCodeNode();
+//                         selection.insertNodes([codeNode]);
+//                         selection = $getSelection();
+//                         if ($isRangeSelection(selection)) {
+//                             selection.insertRawText(textContent);
+//                         }
+//                     }
+//                 }
+//             });
+//         }
+//     };
+
+//     return (
+//         <DropDown
+//         disabled= { disabled }
+//     buttonClassName = "toolbar-item block-controls"
+//     buttonIconClassName = { 'icon block-type ' + blockType }
+//     buttonLabel = { blockTypeToBlockName[blockType]}
+//     buttonAriaLabel = "Formatting options for text style" >
+//         <DropDownItem
+//           className={ 'item ' + dropDownActiveClass(blockType === 'paragraph') }
+//     onClick = { formatParagraph } >
+//         <i className="icon paragraph" />
+//             <span className="text" > Normal < /span>
+//                 < /DropDownItem>
+//                 < DropDownItem
+//     className = { 'item ' + dropDownActiveClass(blockType === 'h1') }
+//     onClick = {() => formatHeading('h1')
+// }>
+//     <i className="icon h1" />
+//         <span className="text" > Heading 1 < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'h2') }
+// onClick = {() => formatHeading('h2')}>
+//     <i className="icon h2" />
+//         <span className="text" > Heading 2 < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'h3') }
+// onClick = {() => formatHeading('h3')}>
+//     <i className="icon h3" />
+//         <span className="text" > Heading 3 < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'bullet') }
+// onClick = { formatBulletList } >
+//     <i className="icon bullet-list" />
+//         <span className="text" > Bullet List < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'number') }
+// onClick = { formatNumberedList } >
+//     <i className="icon numbered-list" />
+//         <span className="text" > Numbered List < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'check') }
+// onClick = { formatCheckList } >
+//     <i className="icon check-list" />
+//         <span className="text" > Check List < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'quote') }
+// onClick = { formatQuote } >
+//     <i className="icon quote" />
+//         <span className="text" > Quote < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// className = { 'item ' + dropDownActiveClass(blockType === 'code') }
+// onClick = { formatCode } >
+//     <i className="icon code" />
+//         <span className="text" > Code Block < /span>
+//             < /DropDownItem>
+//             < /DropDown>
+//     );
+//   }
+
+// function Divider(): JSX.Element {
+//     return <div className="divider" />;
+// }
+
+// function FontDropDown({
+//     editor,
+//     value,
+//     style,
+//     disabled = false,
+// }: {
+//     editor: LexicalEditor;
+//     value: string;
+//     style: string;
+//     disabled?: boolean;
+// }): JSX.Element {
+//     const handleClick = useCallback(
+//         (option: string) => {
+//             editor.update(() => {
+//                 const selection = $getSelection();
+//                 if (selection !== null) {
+//                     $patchStyleText(selection, {
+//                         [style]: option,
+//                     });
+//                 }
+//             });
+//         },
+//         [editor, style],
+//     );
+
+//     const buttonAriaLabel =
+//         style === 'font-family'
+//             ? 'Formatting options for font family'
+//             : 'Formatting options for font size';
+
+//     return (
+//         <DropDown
+//         disabled= { disabled }
+//     buttonClassName = { 'toolbar-item ' + style }
+//     buttonLabel = { value }
+//     buttonIconClassName = {
+//         style === 'font-family' ? 'icon block-type font-family' : ''
+// }
+// buttonAriaLabel = { buttonAriaLabel } >
+//     {(style === 'font-family' ? FONT_FAMILY_OPTIONS : FONT_SIZE_OPTIONS).map(
+//         ([option, text]) => (
+//             <DropDownItem
+//               className= {`item ${dropDownActiveClass(value === option)} ${style === 'font-size' ? 'fontsize-item' : ''
+//                 }`}
+//         onClick = {() => handleClick(option)}
+//         key = { option } >
+//         <span className="text" > { text } < /span>
+//     < /DropDownItem>
+//     ),
+//         )}
+// </DropDown>
+//     );
+//   }
+
+// function ElementFormatDropdown({
+//     editor,
+//     value,
+//     isRTL,
+//     disabled = false,
+// }: {
+//     editor: LexicalEditor;
+//     value: ElementFormatType;
+//     isRTL: boolean;
+//     disabled: boolean;
+// }) {
+//     const formatOption = ELEMENT_FORMAT_OPTIONS[value || 'left'];
+
+//     return (
+//         <DropDown
+//         disabled= { disabled }
+//     buttonLabel = { formatOption.name }
+//     buttonIconClassName = {`icon ${isRTL ? formatOption.iconRTL : formatOption.icon
+//         }`
+// }
+// buttonClassName = "toolbar-item spaced alignment"
+// buttonAriaLabel = "Formatting options for text alignment" >
+//     <DropDownItem
+//           onClick={
+//     () => {
+//         editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'left');
+//     }
+// }
+// className = "item" >
+//     <i className="icon left-align" />
+//         <span className="text" > Left Align < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'center');
+// }}
+// className = "item" >
+//     <i className="icon center-align" />
+//         <span className="text" > Center Align < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'right');
+// }}
+// className = "item" >
+//     <i className="icon right-align" />
+//         <span className="text" > Right Align < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'justify');
+// }}
+// className = "item" >
+//     <i className="icon justify-align" />
+//         <span className="text" > Justify Align < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'start');
+// }}
+// className = "item" >
+//     <i
+//             className={
+//     `icon ${isRTL
+//         ? ELEMENT_FORMAT_OPTIONS.start.iconRTL
+//         : ELEMENT_FORMAT_OPTIONS.start.icon
+//         }`
+// }
+// />
+//     < span className = "text" > Start Align < /span>
+//         < /DropDownItem>
+//         < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(FORMAT_ELEMENT_COMMAND, 'end');
+// }}
+// className = "item" >
+//     <i
+//             className={
+//     `icon ${isRTL
+//         ? ELEMENT_FORMAT_OPTIONS.end.iconRTL
+//         : ELEMENT_FORMAT_OPTIONS.end.icon
+//         }`
+// }
+// />
+//     < span className = "text" > End Align < /span>
+//         < /DropDownItem>
+//         < Divider />
+//         <DropDownItem
+//           onClick={
+//     () => {
+//         editor.dispatchCommand(OUTDENT_CONTENT_COMMAND, undefined);
+//     }
+// }
+// className = "item" >
+//     <i className={ 'icon ' + (isRTL ? 'indent' : 'outdent') } />
+//         < span className = "text" > Outdent < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(INDENT_CONTENT_COMMAND, undefined);
+// }}
+// className = "item" >
+//     <i className={ 'icon ' + (isRTL ? 'outdent' : 'indent') } />
+//         < span className = "text" > Indent < /span>
+//             < /DropDownItem>
+//             < /DropDown>
+//     );
+//   }
+
+// export function ToolbarPlugin({
+//     setIsLinkEditMode,
+// }: {
+//     setIsLinkEditMode: Dispatch<boolean>;
+// }): JSX.Element {
+//     const [editor] = useLexicalComposerContext();
+//     const [activeEditor, setActiveEditor] = useState(editor);
+//     const [blockType, setBlockType] =
+//         useState<keyof typeof blockTypeToBlockName>('paragraph');
+//     const [rootType, setRootType] =
+//         useState<keyof typeof rootTypeToRootName>('root');
+//     const [selectedElementKey, setSelectedElementKey] = useState<NodeKey | null>(
+//         null,
+//     );
+//     const [fontSize, setFontSize] = useState<string>('15px');
+//     const [fontColor, setFontColor] = useState<string>('#000');
+//     const [bgColor, setBgColor] = useState<string>('#fff');
+//     const [fontFamily, setFontFamily] = useState<string>('Arial');
+//     const [elementFormat, setElementFormat] = useState<ElementFormatType>('left');
+//     const [isLink, setIsLink] = useState(false);
+//     const [isBold, setIsBold] = useState(false);
+//     const [isItalic, setIsItalic] = useState(false);
+//     const [isUnderline, setIsUnderline] = useState(false);
+//     const [isStrikethrough, setIsStrikethrough] = useState(false);
+//     const [isSubscript, setIsSubscript] = useState(false);
+//     const [isSuperscript, setIsSuperscript] = useState(false);
+//     const [isCode, setIsCode] = useState(false);
+//     const [canUndo, setCanUndo] = useState(false);
+//     const [canRedo, setCanRedo] = useState(false);
+//     const [modal, showModal] = useModal();
+//     const [isRTL, setIsRTL] = useState(false);
+//     const [codeLanguage, setCodeLanguage] = useState<string>('');
+//     const [isEditable, setIsEditable] = useState(() => editor.isEditable());
+
+//     const $updateToolbar = useCallback(() => {
+//         const selection = $getSelection();
+//         if ($isRangeSelection(selection)) {
+//             const anchorNode = selection.anchor.getNode();
+//             let element =
+//                 anchorNode.getKey() === 'root'
+//                     ? anchorNode
+//                     : $findMatchingParent(anchorNode, (e) => {
+//                         const parent = e.getParent();
+//                         return parent !== null && $isRootOrShadowRoot(parent);
+//                     });
+
+//             if (element === null) {
+//                 element = anchorNode.getTopLevelElementOrThrow();
+//             }
+
+//             const elementKey = element.getKey();
+//             const elementDOM = activeEditor.getElementByKey(elementKey);
+
+//             // Update text format
+//             setIsBold(selection.hasFormat('bold'));
+//             setIsItalic(selection.hasFormat('italic'));
+//             setIsUnderline(selection.hasFormat('underline'));
+//             setIsStrikethrough(selection.hasFormat('strikethrough'));
+//             setIsSubscript(selection.hasFormat('subscript'));
+//             setIsSuperscript(selection.hasFormat('superscript'));
+//             setIsCode(selection.hasFormat('code'));
+//             setIsRTL($isParentElementRTL(selection));
+
+//             // Update links
+//             const node = getSelectedNode(selection);
+//             const parent = node.getParent();
+//             if ($isLinkNode(parent) || $isLinkNode(node)) {
+//                 setIsLink(true);
+//             } else {
+//                 setIsLink(false);
+//             }
+
+//             const tableNode = $findMatchingParent(node, $isTableNode);
+//             if ($isTableNode(tableNode)) {
+//                 setRootType('table');
+//             } else {
+//                 setRootType('root');
+//             }
+
+//             if (elementDOM !== null) {
+//                 setSelectedElementKey(elementKey);
+//                 if ($isListNode(element)) {
+//                     const parentList = $getNearestNodeOfType<ListNode>(
+//                         anchorNode,
+//                         ListNode,
+//                     );
+//                     const type = parentList
+//                         ? parentList.getListType()
+//                         : element.getListType();
+//                     setBlockType(type);
+//                 } else {
+//                     const type = $isHeadingNode(element)
+//                         ? element.getTag()
+//                         : element.getType();
+//                     if (type in blockTypeToBlockName) {
+//                         setBlockType(type as keyof typeof blockTypeToBlockName);
+//                     }
+//                     if ($isCodeNode(element)) {
+//                         const language =
+//                             element.getLanguage() as keyof typeof CODE_LANGUAGE_MAP;
+//                         setCodeLanguage(
+//                             language ? CODE_LANGUAGE_MAP[language] || language : '',
+//                         );
+//                         return;
+//                     }
+//                 }
+//             }
+//             // Handle buttons
+//             setFontSize(
+//                 $getSelectionStyleValueForProperty(selection, 'font-size', '15px'),
+//             );
+//             setFontColor(
+//                 $getSelectionStyleValueForProperty(selection, 'color', '#000'),
+//             );
+//             setBgColor(
+//                 $getSelectionStyleValueForProperty(
+//                     selection,
+//                     'background-color',
+//                     '#fff',
+//                 ),
+//             );
+//             setFontFamily(
+//                 $getSelectionStyleValueForProperty(selection, 'font-family', 'Arial'),
+//             );
+//             let matchingParent;
+//             if ($isLinkNode(parent)) {
+//                 // If node is a link, we need to fetch the parent paragraph node to set format
+//                 matchingParent = $findMatchingParent(
+//                     node,
+//                     (parentNode) => $isElementNode(parentNode) && !parentNode.isInline(),
+//                 );
+//             }
+
+//             // If matchingParent is a valid node, pass it's format type
+//             setElementFormat(
+//                 $isElementNode(matchingParent)
+//                     ? matchingParent.getFormatType()
+//                     : $isElementNode(node)
+//                         ? node.getFormatType()
+//                         : parent?.getFormatType() || 'left',
+//             );
+//         }
+//     }, [activeEditor]);
+
+//     useEffect(() => {
+//         return editor.registerCommand(
+//             SELECTION_CHANGE_COMMAND,
+//             (_payload, newEditor) => {
+//                 $updateToolbar();
+//                 setActiveEditor(newEditor);
+//                 return false;
+//             },
+//             COMMAND_PRIORITY_CRITICAL,
+//         );
+//     }, [editor, $updateToolbar]);
+
+//     useEffect(() => {
+//         return mergeRegister(
+//             editor.registerEditableListener((editable) => {
+//                 setIsEditable(editable);
+//             }),
+//             activeEditor.registerUpdateListener(({ editorState }) => {
+//                 editorState.read(() => {
+//                     $updateToolbar();
+//                 });
+//             }),
+//             activeEditor.registerCommand<boolean>(
+//                 CAN_UNDO_COMMAND,
+//                 (payload) => {
+//                     setCanUndo(payload);
+//                     return false;
+//                 },
+//                 COMMAND_PRIORITY_CRITICAL,
+//             ),
+//             activeEditor.registerCommand<boolean>(
+//                 CAN_REDO_COMMAND,
+//                 (payload) => {
+//                     setCanRedo(payload);
+//                     return false;
+//                 },
+//                 COMMAND_PRIORITY_CRITICAL,
+//             ),
+//         );
+//     }, [$updateToolbar, activeEditor, editor]);
+
+//     useEffect(() => {
+//         return activeEditor.registerCommand(
+//             KEY_MODIFIER_COMMAND,
+//             (payload) => {
+//                 const event: KeyboardEvent = payload;
+//                 const { code, ctrlKey, metaKey } = event;
+
+//                 if (code === 'KeyK' && (ctrlKey || metaKey)) {
+//                     event.preventDefault();
+//                     let url: string | null;
+//                     if (!isLink) {
+//                         setIsLinkEditMode(true);
+//                         url = sanitizeUrl('https://');
+//                     } else {
+//                         setIsLinkEditMode(false);
+//                         url = null;
+//                     }
+//                     return activeEditor.dispatchCommand(TOGGLE_LINK_COMMAND, url);
+//                 }
+//                 return false;
+//             },
+//             COMMAND_PRIORITY_NORMAL,
+//         );
+//     }, [activeEditor, isLink, setIsLinkEditMode]);
+
+//     const applyStyleText = useCallback(
+//         (styles: Record<string, string>, skipHistoryStack?: boolean) => {
+//             activeEditor.update(
+//                 () => {
+//                     const selection = $getSelection();
+//                     if (selection !== null) {
+//                         $patchStyleText(selection, styles);
+//                     }
+//                 },
+//                 skipHistoryStack ? { tag: 'historic' } : {},
+//             );
+//         },
+//         [activeEditor],
+//     );
+
+//     const clearFormatting = useCallback(() => {
+//         activeEditor.update(() => {
+//             const selection = $getSelection();
+//             if ($isRangeSelection(selection) || $isTableSelection(selection)) {
+//                 const anchor = selection.anchor;
+//                 const focus = selection.focus;
+//                 const nodes = selection.getNodes();
+
+//                 if (anchor.key === focus.key && anchor.offset === focus.offset) {
+//                     return;
+//                 }
+
+//                 nodes.forEach((node, idx) => {
+//                     // We split the first and last node by the selection
+//                     // So that we don't format unselected text inside those nodes
+//                     if ($isTextNode(node)) {
+//                         // Use a separate variable to ensure TS does not lose the refinement
+//                         let textNode = node;
+//                         if (idx === 0 && anchor.offset !== 0) {
+//                             textNode = textNode.splitText(anchor.offset)[1] || textNode;
+//                         }
+//                         if (idx === nodes.length - 1) {
+//                             textNode = textNode.splitText(focus.offset)[0] || textNode;
+//                         }
+
+//                         if (textNode.__style !== '') {
+//                             textNode.setStyle('');
+//                         }
+//                         if (textNode.__format !== 0) {
+//                             textNode.setFormat(0);
+//                             $getNearestBlockElementAncestorOrThrow(textNode).setFormat('');
+//                         }
+//                         node = textNode;
+//                     } else if ($isHeadingNode(node) || $isQuoteNode(node)) {
+//                         node.replace($createParagraphNode(), true);
+//                     } else if ($isDecoratorBlockNode(node)) {
+//                         node.setFormat('');
+//                     }
+//                 });
+//             }
+//         });
+//     }, [activeEditor]);
+
+//     const onFontColorSelect = useCallback(
+//         (value: string, skipHistoryStack: boolean) => {
+//             applyStyleText({ color: value }, skipHistoryStack);
+//         },
+//         [applyStyleText],
+//     );
+
+//     const onBgColorSelect = useCallback(
+//         (value: string, skipHistoryStack: boolean) => {
+//             applyStyleText({ 'background-color': value }, skipHistoryStack);
+//         },
+//         [applyStyleText],
+//     );
+
+//     const insertLink = useCallback(() => {
+//         if (!isLink) {
+//             setIsLinkEditMode(true);
+//             editor.dispatchCommand(TOGGLE_LINK_COMMAND, sanitizeUrl('https://'));
+//         } else {
+//             setIsLinkEditMode(false);
+//             editor.dispatchCommand(TOGGLE_LINK_COMMAND, null);
+//         }
+//     }, [editor, isLink, setIsLinkEditMode]);
+
+//     const onCodeLanguageSelect = useCallback(
+//         (value: string) => {
+//             activeEditor.update(() => {
+//                 if (selectedElementKey !== null) {
+//                     const node = $getNodeByKey(selectedElementKey);
+//                     if ($isCodeNode(node)) {
+//                         node.setLanguage(value);
+//                     }
+//                 }
+//             });
+//         },
+//         [activeEditor, selectedElementKey],
+//     );
+//     const insertGifOnClick = (payload: InsertImagePayload) => {
+//         activeEditor.dispatchCommand(INSERT_IMAGE_COMMAND, payload);
+//     };
+
+//     return (
+//         <div className= "toolbar" >
+//         <button
+//           disabled={ !canUndo || !isEditable }
+//     onClick = {() => {
+//         activeEditor.dispatchCommand(UNDO_COMMAND, undefined);
+//     }
+// }
+// title = { IS_APPLE? 'Undo (⌘Z)': 'Undo (Ctrl+Z)' }
+// type = "button"
+// className = "toolbar-item spaced"
+// aria - label="Undo" >
+//     <i className="format undo" />
+//         </button>
+//         < button
+// disabled = {!canRedo || !isEditable}
+// onClick = {() => {
+//     activeEditor.dispatchCommand(REDO_COMMAND, undefined);
+// }}
+// title = { IS_APPLE? 'Redo (⌘Y)': 'Redo (Ctrl+Y)' }
+// type = "button"
+// className = "toolbar-item"
+// aria - label="Redo" >
+//     <i className="format redo" />
+//         </button>
+//         < Divider />
+//         { blockType in blockTypeToBlockName && activeEditor === editor && (
+//             <>
+//             <BlockFormatDropDown
+//               disabled={ !isEditable }
+// blockType = { blockType }
+// rootType = { rootType }
+// editor = { editor }
+//     />
+//     <Divider />
+//     < />
+//         )}
+// {
+//     blockType === 'code' ? (
+//         <DropDown
+//             disabled= {!isEditable
+// }
+// buttonClassName = "toolbar-item code-language"
+// buttonLabel = { getLanguageFriendlyName(codeLanguage) }
+// buttonAriaLabel = "Select language" >
+// {
+//     CODE_LANGUAGE_OPTIONS.map(([value, name]) => {
+//         return (
+//             <DropDownItem
+//                   className= {`item ${dropDownActiveClass(
+//                 value === codeLanguage,
+//             )}`
+//     }
+//                   onClick = {() => onCodeLanguageSelect(value)}
+// key = { value } >
+//     <span className="text" > { name } < /span>
+//         < /DropDownItem>
+//               );
+//             })}
+// </DropDown>
+//         ) : (
+//     <>
+//     <FontDropDown
+//               disabled= {!isEditable}
+// style = { 'font-family'}
+// value = { fontFamily }
+// editor = { editor }
+//     />
+//     <Divider />
+//     < FontSize
+// selectionFontSize = { fontSize.slice(0, -2) }
+// editor = { editor }
+// disabled = {!isEditable}
+// />
+//     < Divider />
+//     <button
+//               disabled={ !isEditable }
+// onClick = {() => {
+//     activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'bold');
+// }}
+// className = { 'toolbar-item spaced ' + (isBold ? 'active' : '') }
+// title = { IS_APPLE? 'Bold (⌘B)': 'Bold (Ctrl+B)' }
+// type = "button"
+// aria - label={
+//     `Format text as bold. Shortcut: ${IS_APPLE ? '⌘B' : 'Ctrl+B'
+//         }`
+// }>
+//     <i className="format bold" />
+//         </button>
+//         < button
+// disabled = {!isEditable}
+// onClick = {() => {
+//     activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'italic');
+// }}
+// className = { 'toolbar-item spaced ' + (isItalic ? 'active' : '') }
+// title = { IS_APPLE? 'Italic (⌘I)': 'Italic (Ctrl+I)' }
+// type = "button"
+// aria - label={
+//     `Format text as italics. Shortcut: ${IS_APPLE ? '⌘I' : 'Ctrl+I'
+//         }`
+// }>
+//     <i className="format italic" />
+//         </button>
+//         < button
+// disabled = {!isEditable}
+// onClick = {() => {
+//     activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'underline');
+// }}
+// className = { 'toolbar-item spaced ' + (isUnderline ? 'active' : '') }
+// title = { IS_APPLE? 'Underline (⌘U)': 'Underline (Ctrl+U)' }
+// type = "button"
+// aria - label={
+//     `Format text to underlined. Shortcut: ${IS_APPLE ? '⌘U' : 'Ctrl+U'
+//         }`
+// }>
+//     <i className="format underline" />
+//         </button>
+//         < button
+// disabled = {!isEditable}
+// onClick = {() => {
+//     activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'code');
+// }}
+// className = { 'toolbar-item spaced ' + (isCode ? 'active' : '') }
+// title = "Insert code block"
+// type = "button"
+// aria - label="Insert code block" >
+//     <i className="format code" />
+//         </button>
+//         < button
+// disabled = {!isEditable}
+// onClick = { insertLink }
+// className = { 'toolbar-item spaced ' + (isLink ? 'active' : '') }
+// aria - label="Insert link"
+// title = "Insert link"
+// type = "button" >
+//     <i className="format link" />
+//         </button>
+//         < DropdownColorPicker
+// disabled = {!isEditable}
+// buttonClassName = "toolbar-item color-picker"
+// buttonAriaLabel = "Formatting text color"
+// buttonIconClassName = "icon font-color"
+// color = { fontColor }
+// onChange = { onFontColorSelect }
+// title = "text color"
+//     />
+//     <DropdownColorPicker
+//               disabled={ !isEditable }
+// buttonClassName = "toolbar-item color-picker"
+// buttonAriaLabel = "Formatting background color"
+// buttonIconClassName = "icon bg-color"
+// color = { bgColor }
+// onChange = { onBgColorSelect }
+// title = "bg color"
+//     />
+//     <DropDown
+//               disabled={ !isEditable }
+// buttonClassName = "toolbar-item spaced"
+// buttonLabel = ""
+// buttonAriaLabel = "Formatting options for additional text styles"
+// buttonIconClassName = "icon dropdown-more" >
+//     <DropDownItem
+//                 onClick={
+//     () => {
+//         activeEditor.dispatchCommand(
+//             FORMAT_TEXT_COMMAND,
+//             'strikethrough',
+//         );
+//     }
+// }
+// className = { 'item ' + dropDownActiveClass(isStrikethrough) }
+// title = "Strikethrough"
+// aria - label="Format text with a strikethrough" >
+//     <i className="icon strikethrough" />
+//         <span className="text" > Strikethrough < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     activeEditor.dispatchCommand(FORMAT_TEXT_COMMAND, 'subscript');
+// }}
+// className = { 'item ' + dropDownActiveClass(isSubscript) }
+// title = "Subscript"
+// aria - label="Format text with a subscript" >
+//     <i className="icon subscript" />
+//         <span className="text" > Subscript < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     activeEditor.dispatchCommand(
+//         FORMAT_TEXT_COMMAND,
+//         'superscript',
+//     );
+// }}
+// className = { 'item ' + dropDownActiveClass(isSuperscript) }
+// title = "Superscript"
+// aria - label="Format text with a superscript" >
+//     <i className="icon superscript" />
+//         <span className="text" > Superscript < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = { clearFormatting }
+// className = "item"
+// title = "Clear text formatting"
+// aria - label="Clear all text formatting" >
+//     <i className="icon clear" />
+//         <span className="text" > Clear Formatting < /span>
+//             < /DropDownItem>
+//             < /DropDown>
+//             < Divider />
+//             <DropDown
+//               disabled={ !isEditable }
+// buttonClassName = "toolbar-item spaced"
+// buttonLabel = "Insert"
+// buttonAriaLabel = "Insert specialized editor node"
+// buttonIconClassName = "icon plus" >
+//     <DropDownItem
+//                 onClick={
+//     () => {
+//         activeEditor.dispatchCommand(
+//             INSERT_HORIZONTAL_RULE_COMMAND,
+//             undefined,
+//         );
+//     }
+// }
+// className = "item" >
+//     <i className="icon horizontal-rule" />
+//         <span className="text" > Horizontal Rule < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     activeEditor.dispatchCommand(INSERT_PAGE_BREAK, undefined);
+// }}
+// className = "item" >
+//     <i className="icon page-break" />
+//         <span className="text" > Page Break < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     showModal('Insert Image', (onClose) => (
+//         <InsertImageDialog
+//                       activeEditor= { activeEditor }
+//                       onClose = { onClose }
+//         />
+//                   ));
+// }}
+// className = "item" >
+//     <i className="icon image" />
+//         <span className="text" > Image < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     showModal('Insert Inline Image', (onClose) => (
+//         <InsertInlineImageDialog
+//                       activeEditor= { activeEditor }
+//                       onClose = { onClose }
+//         />
+//                   ));
+// }}
+// className = "item" >
+//     <i className="icon image" />
+//         <span className="text" > Inline Image < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() =>
+// insertGifOnClick({
+//     altText: 'Cat typing on a laptop',
+//     src: catTypingGif,
+// })
+//                 }
+// className = "item" >
+//     <i className="icon gif" />
+//         <span className="text" > GIF < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     activeEditor.dispatchCommand(
+//         INSERT_EXCALIDRAW_COMMAND,
+//         undefined,
+//     );
+// }}
+// className = "item" >
+//     <i className="icon diagram-2" />
+//         <span className="text" > Excalidraw < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     showModal('Insert Table', (onClose) => (
+//         <InsertTableDialog
+//                       activeEditor= { activeEditor }
+//                       onClose = { onClose }
+//         />
+//                   ));
+// }}
+// className = "item" >
+//     <i className="icon table" />
+//         <span className="text" > Table < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     showModal('Insert Poll', (onClose) => (
+//         <InsertPollDialog
+//                       activeEditor= { activeEditor }
+//                       onClose = { onClose }
+//         />
+//                   ));
+// }}
+// className = "item" >
+//     <i className="icon poll" />
+//         <span className="text" > Poll < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     showModal('Insert Columns Layout', (onClose) => (
+//         <InsertLayoutDialog
+//                       activeEditor= { activeEditor }
+//                       onClose = { onClose }
+//         />
+//                   ));
+// }}
+// className = "item" >
+//     <i className="icon columns" />
+//         <span className="text" > Columns Layout < /span>
+//             < /DropDownItem>
+
+//             < DropDownItem
+// onClick = {() => {
+//     showModal('Insert Equation', (onClose) => (
+//         <InsertEquationDialog
+//                       activeEditor= { activeEditor }
+//                       onClose = { onClose }
+//         />
+//                   ));
+// }}
+// className = "item" >
+//     <i className="icon equation" />
+//         <span className="text" > Equation < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.update(() => {
+//         const root = $getRoot();
+//         const stickyNode = $createStickyNode(0, 0);
+//         root.append(stickyNode);
+//     });
+// }}
+// className = "item" >
+//     <i className="icon sticky" />
+//         <span className="text" > Sticky Note < /span>
+//             < /DropDownItem>
+//             < DropDownItem
+// onClick = {() => {
+//     editor.dispatchCommand(INSERT_COLLAPSIBLE_COMMAND, undefined);
+// }}
+// className = "item" >
+//     <i className="icon caret-right" />
+//         <span className="text" > Collapsible container < /span>
+//             < /DropDownItem>
+// {
+//     EmbedConfigs.map((embedConfig) => (
+//         <DropDownItem
+//                   key= { embedConfig.type }
+//                   onClick = {() => {
+//         activeEditor.dispatchCommand(
+//             INSERT_EMBED_COMMAND,
+//             embedConfig.type,
+//         );
+//     }}
+// className = "item" >
+//     { embedConfig.icon }
+//     < span className = "text" > { embedConfig.contentName } < /span>
+//         < /DropDownItem>
+//               ))}
+// </DropDown>
+//     < />
+//         )}
+// <Divider />
+//     < ElementFormatDropdown
+// disabled = {!isEditable}
+// value = { elementFormat }
+// editor = { editor }
+// isRTL = { isRTL }
+//     />
+
+//     { modal }
+//     < /div>
+//     );
+//   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// const MIN_ALLOWED_FONT_SIZE = 8;
+// const MAX_ALLOWED_FONT_SIZE = 72;
+// const DEFAULT_FONT_SIZE = 15;
+
+// // eslint-disable-next-line no-shadow
+// enum updateFontSizeType {
+//     increment = 1,
+//     decrement,
+// }
+
+// export function FontSize({
+//     selectionFontSize,
+//     disabled,
+//     editor,
+// }: {
+//     selectionFontSize: string;
+//     disabled: boolean;
+//     editor: LexicalEditor;
+// }) {
+//     const [inputValue, setInputValue] = React.useState<string>(selectionFontSize);
+
+//     /**
+//      * Calculates the new font size based on the update type.
+//      * @param currentFontSize - The current font size
+//      * @param updateType - The type of change, either increment or decrement
+//      * @returns the next font size
+//      */
+//     const calculateNextFontSize = (
+//         currentFontSize: number,
+//         updateType: updateFontSizeType | null,
+//     ) => {
+//         if (!updateType) {
+//             return currentFontSize;
+//         }
+
+//         let updatedFontSize: number = currentFontSize;
+//         switch (updateType) {
+//             case updateFontSizeType.decrement:
+//                 switch (true) {
+//                     case currentFontSize > MAX_ALLOWED_FONT_SIZE:
+//                         updatedFontSize = MAX_ALLOWED_FONT_SIZE;
+//                         break;
+//                     case currentFontSize >= 48:
+//                         updatedFontSize -= 12;
+//                         break;
+//                     case currentFontSize >= 24:
+//                         updatedFontSize -= 4;
+//                         break;
+//                     case currentFontSize >= 14:
+//                         updatedFontSize -= 2;
+//                         break;
+//                     case currentFontSize >= 9:
+//                         updatedFontSize -= 1;
+//                         break;
+//                     default:
+//                         updatedFontSize = MIN_ALLOWED_FONT_SIZE;
+//                         break;
+//                 }
+//                 break;
+
+//             case updateFontSizeType.increment:
+//                 switch (true) {
+//                     case currentFontSize < MIN_ALLOWED_FONT_SIZE:
+//                         updatedFontSize = MIN_ALLOWED_FONT_SIZE;
+//                         break;
+//                     case currentFontSize < 12:
+//                         updatedFontSize += 1;
+//                         break;
+//                     case currentFontSize < 20:
+//                         updatedFontSize += 2;
+//                         break;
+//                     case currentFontSize < 36:
+//                         updatedFontSize += 4;
+//                         break;
+//                     case currentFontSize <= 60:
+//                         updatedFontSize += 12;
+//                         break;
+//                     default:
+//                         updatedFontSize = MAX_ALLOWED_FONT_SIZE;
+//                         break;
+//                 }
+//                 break;
+
+//             default:
+//                 break;
+//         }
+//         return updatedFontSize;
+//     };
+//     /**
+//      * Patches the selection with the updated font size.
+//      */
+
+//     const updateFontSizeInSelection = React.useCallback(
+//         (newFontSize: string | null, updateType: updateFontSizeType | null) => {
+//             const getNextFontSize = (prevFontSize: string | null): string => {
+//                 if (!prevFontSize) {
+//                     prevFontSize = `${DEFAULT_FONT_SIZE}px`;
+//                 }
+//                 prevFontSize = prevFontSize.slice(0, -2);
+//                 const nextFontSize = calculateNextFontSize(
+//                     Number(prevFontSize),
+//                     updateType,
+//                 );
+//                 return `${nextFontSize}px`;
+//             };
+
+//             editor.update(() => {
+//                 if (editor.isEditable()) {
+//                     const selection = $getSelection();
+//                     if (selection !== null) {
+//                         $patchStyleText(selection, {
+//                             'font-size': newFontSize || getNextFontSize,
+//                         });
+//                     }
+//                 }
+//             });
+//         },
+//         [editor],
+//     );
+
+//     const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+//         const inputValueNumber = Number(inputValue);
+
+//         if (['e', 'E', '+', '-'].includes(e.key) || isNaN(inputValueNumber)) {
+//             e.preventDefault();
+//             setInputValue('');
+//             return;
+//         }
+
+//         if (e.key === 'Enter') {
+//             e.preventDefault();
+
+//             let updatedFontSize = inputValueNumber;
+//             if (inputValueNumber > MAX_ALLOWED_FONT_SIZE) {
+//                 updatedFontSize = MAX_ALLOWED_FONT_SIZE;
+//             } else if (inputValueNumber < MIN_ALLOWED_FONT_SIZE) {
+//                 updatedFontSize = MIN_ALLOWED_FONT_SIZE;
+//             }
+//             setInputValue(String(updatedFontSize));
+//             updateFontSizeInSelection(String(updatedFontSize) + 'px', null);
+//         }
+//     };
+
+//     const handleButtonClick = (updateType: updateFontSizeType) => {
+//         if (inputValue !== '') {
+//             const nextFontSize = calculateNextFontSize(
+//                 Number(inputValue),
+//                 updateType,
+//             );
+//             updateFontSizeInSelection(String(nextFontSize) + 'px', null);
+//         } else {
+//             updateFontSizeInSelection(null, updateType);
+//         }
+//     };
+
+//     React.useEffect(() => {
+//         setInputValue(selectionFontSize);
+//     }, [selectionFontSize]);
+
+//     return (
+//         <>
+//         <button
+//         type= "button"
+//     disabled = {
+//         disabled ||
+//         (selectionFontSize !== '' &&
+//             Number(inputValue) <= MIN_ALLOWED_FONT_SIZE)
+// }
+// onClick = {() => handleButtonClick(updateFontSizeType.decrement)}
+// className = "toolbar-item font-decrement" >
+//     <i className="format minus-icon" />
+//         </button>
+
+//         < input
+// type = "number"
+// value = { inputValue }
+// disabled = { disabled }
+// className = "toolbar-item font-size-input"
+// min = { MIN_ALLOWED_FONT_SIZE }
+// max = { MAX_ALLOWED_FONT_SIZE }
+// onChange = {(e) => setInputValue(e.target.value)}
+// onKeyDown = { handleKeyPress }
+//     />
+
+//     <button
+//         type="button"
+// disabled = {
+//     disabled ||
+//     (selectionFontSize !== '' &&
+//         Number(inputValue) >= MAX_ALLOWED_FONT_SIZE)
+//         }
+// onClick = {() => handleButtonClick(updateFontSizeType.increment)}
+// className = "toolbar-item font-increment" >
+//     <i className="format add-icon" />
+//         </button>
+//         < />
+//   );
+// }
+
+
+
+// export function TreeViewPlugin(): JSX.Element {
+//     const [editor] = useLexicalComposerContext();
+//     return (
+//         <TreeView
+//       viewClassName= "tree-view-output"
+//     treeTypeButtonClassName = "debug-treetype-button"
+//     timeTravelPanelClassName = "debug-timetravel-panel"
+//     timeTravelButtonClassName = "debug-timetravel-button"
+//     timeTravelPanelSliderClassName = "debug-timetravel-panel-slider"
+//     timeTravelPanelButtonClassName = "debug-timetravel-panel-button"
+//     editor = { editor }
+//         />
+//   );
+// }
+
+// export const INSERT_TWEET_COMMAND: LexicalCommand<string> = createCommand(
+//     'INSERT_TWEET_COMMAND',
+// );
+
+// export function TwitterPlugin(): JSX.Element | null {
+//     const [editor] = useLexicalComposerContext();
+
+//     useEffect(() => {
+//         if (!editor.hasNodes([TweetNode])) {
+//             throw new Error('TwitterPlugin: TweetNode not registered on editor');
+//         }
+
+//         return editor.registerCommand<string>(
+//             INSERT_TWEET_COMMAND,
+//             (payload) => {
+//                 const tweetNode = $createTweetNode(payload);
+//                 $insertNodeToNearestRoot(tweetNode);
+
+//                 return true;
+//             },
+//             COMMAND_PRIORITY_EDITOR,
+//         );
+//     }, [editor]);
+
+//     return null;
+// }
+
+
+
+
+// const validInputTypes = new Set([
+//     'insertText',
+//     'insertCompositionText',
+//     'insertFromComposition',
+//     'insertLineBreak',
+//     'insertParagraph',
+//     'deleteCompositionText',
+//     'deleteContentBackward',
+//     'deleteByComposition',
+//     'deleteContent',
+//     'deleteContentForward',
+//     'deleteWordBackward',
+//     'deleteWordForward',
+//     'deleteHardLineBackward',
+//     'deleteSoftLineBackward',
+//     'deleteHardLineForward',
+//     'deleteSoftLineForward',
+// ]);
+
+// export function TypingPerfPlugin(): JSX.Element | null {
+//     const report = useReport();
+//     useEffect(() => {
+//         let start = 0;
+//         let timerId: ReturnType<typeof setTimeout> | null;
+//         let keyPressTimerId: ReturnType<typeof setTimeout> | null;
+//         let log: Array<DOMHighResTimeStamp> = [];
+//         let invalidatingEvent = false;
+
+//         const measureEventEnd = function logKeyPress() {
+//             if (keyPressTimerId != null) {
+//                 if (invalidatingEvent) {
+//                     invalidatingEvent = false;
+//                 } else {
+//                     log.push(performance.now() - start);
+//                 }
+
+//                 clearTimeout(keyPressTimerId);
+//                 keyPressTimerId = null;
+//             }
+//         };
+
+//         const measureEventStart = function measureEvent() {
+//             if (timerId != null) {
+//                 clearTimeout(timerId);
+//                 timerId = null;
+//             }
+
+//             // We use a setTimeout(0) instead of requestAnimationFrame, due to
+//             // inconsistencies between the sequencing of rAF in different browsers.
+//             keyPressTimerId = setTimeout(measureEventEnd, 0);
+//             // Schedule a timer to report the results.
+//             timerId = setTimeout(() => {
+//                 const total = log.reduce((a, b) => a + b, 0);
+//                 const reportedText =
+//                     'Typing Perf: ' + Math.round((total / log.length) * 100) / 100 + 'ms';
+//                 report(reportedText);
+//                 log = [];
+//             }, 2000);
+//             // Make the time after we do the previous logic, so we don't measure the overhead
+//             // for it all.
+//             start = performance.now();
+//         };
+
+//         const beforeInputHandler = function beforeInputHandler(event: InputEvent) {
+//             if (!validInputTypes.has(event.inputType) || invalidatingEvent) {
+//                 invalidatingEvent = false;
+//                 return;
+//             }
+
+//             measureEventStart();
+//         };
+
+//         const keyDownHandler = function keyDownHandler(event: KeyboardEvent) {
+//             const keyCode = event.keyCode;
+
+//             if (keyCode === 8 || keyCode === 13) {
+//                 measureEventStart();
+//             }
+//         };
+
+//         const pasteHandler = function pasteHandler() {
+//             invalidatingEvent = true;
+//         };
+
+//         const cutHandler = function cutHandler() {
+//             invalidatingEvent = true;
+//         };
+
+//         window.addEventListener('keydown', keyDownHandler, true);
+//         window.addEventListener('selectionchange', measureEventEnd, true);
+//         window.addEventListener('beforeinput', beforeInputHandler, true);
+//         window.addEventListener('paste', pasteHandler, true);
+//         window.addEventListener('cut', cutHandler, true);
+
+//         return () => {
+//             window.removeEventListener('keydown', keyDownHandler, true);
+//             window.removeEventListener('selectionchange', measureEventEnd, true);
+//             window.removeEventListener('beforeinput', beforeInputHandler, true);
+//             window.removeEventListener('paste', pasteHandler, true);
+//             window.removeEventListener('cut', cutHandler, true);
+//         };
+//     }, [report]);
+
+//     return null;
+// }
+
+// export type InsertTableCommandPayload = Readonly<{
+//     columns: string;
+//     rows: string;
+//     includeHeaders?: boolean;
+// }>;
+
+// export type CellContextShape = {
+//     cellEditorConfig: null | CellEditorConfig;
+//     cellEditorPlugins: null | JSX.Element | Array<JSX.Element>;
+//     set: (
+//         cellEditorConfig: null | CellEditorConfig,
+//         cellEditorPlugins: null | JSX.Element | Array<JSX.Element>,
+//     ) => void;
+// };
+
+// export type CellEditorConfig = Readonly<{
+//     namespace: string;
+//     nodes?: ReadonlyArray<Klass<LexicalNode>>;
+//     onError: (error: Error, editor: LexicalEditor) => void;
+//     readOnly?: boolean;
+//     theme?: EditorThemeClasses;
+// }>;
+
+// export const INSERT_NEW_TABLE_COMMAND: LexicalCommand<InsertTableCommandPayload> =
+//     createCommand('INSERT_NEW_TABLE_COMMAND');
+
+// export const CellContext = createContext<CellContextShape>({
+//     cellEditorConfig: null,
+//     cellEditorPlugins: null,
+//     set: () => {
+//         // Empty
+//     },
+// });
+
+// export function TableContext({ children }: { children: JSX.Element }) {
+//     const [contextValue, setContextValue] = useState<{
+//         cellEditorConfig: null | CellEditorConfig;
+//         cellEditorPlugins: null | JSX.Element | Array<JSX.Element>;
+//     }>({
+//         cellEditorConfig: null,
+//         cellEditorPlugins: null,
+//     });
+//     return (
+//         <CellContext.Provider
+//       value= { useMemo(
+//         () => ({
+//         cellEditorConfig: contextValue.cellEditorConfig,
+//         cellEditorPlugins: contextValue.cellEditorPlugins,
+//         set: (cellEditorConfig, cellEditorPlugins) => {
+//             setContextValue({ cellEditorConfig, cellEditorPlugins });
+//         },
+//     }),
+//         [contextValue.cellEditorConfig, contextValue.cellEditorPlugins],
+//       )
+// }>
+//     { children }
+//     < /CellContext.Provider>
+//   );
+// }
+
+// export function InsertTableDialog({
+//     activeEditor,
+//     onClose,
+// }: {
+//     activeEditor: LexicalEditor;
+//     onClose: () => void;
+// }): JSX.Element {
+//     const [rows, setRows] = useState('5');
+//     const [columns, setColumns] = useState('5');
+//     const [isDisabled, setIsDisabled] = useState(true);
+
+//     useEffect(() => {
+//         const row = Number(rows);
+//         const column = Number(columns);
+//         if (row && row > 0 && row <= 500 && column && column > 0 && column <= 50) {
+//             setIsDisabled(false);
+//         } else {
+//             setIsDisabled(true);
+//         }
+//     }, [rows, columns]);
+
+//     const onClick = () => {
+//         activeEditor.dispatchCommand(INSERT_TABLE_COMMAND, {
+//             columns,
+//             rows,
+//         });
+
+//         onClose();
+//     };
+
+//     return (
+//         <>
+//         <TextInput
+//         placeholder= { '# of rows (1-500)'}
+//     label = "Rows"
+//     onChange = { setRows }
+//     value = { rows }
+//     data - test - id="table-modal-rows"
+//     type = "number"
+//         />
+//         <TextInput
+//         placeholder={ '# of columns (1-50)' }
+//     label = "Columns"
+//     onChange = { setColumns }
+//     value = { columns }
+//     data - test - id="table-modal-columns"
+//     type = "number"
+//         />
+//         <DialogActions data - test - id="table-model-confirm-insert" >
+//             <Button disabled={ isDisabled } onClick = { onClick } >
+//                 Confirm
+//                 < /Button>
+//                 < /DialogActions>
+//                 < />
+//   );
+// }
+
+// export function TablePlugin({
+//     cellEditorConfig,
+//     children,
+// }: {
+//     cellEditorConfig: CellEditorConfig;
+//     children: JSX.Element | Array<JSX.Element>;
+// }): JSX.Element | null {
+//     const [editor] = useLexicalComposerContext();
+//     const cellContext = useContext(CellContext);
+
+//     useEffect(() => {
+//         if (!editor.hasNodes([TableNode])) {
+//             invariant(false, 'TablePlugin: TableNode is not registered on editor');
+//         }
+
+//         cellContext.set(cellEditorConfig, children);
+
+//         return editor.registerCommand<InsertTableCommandPayload>(
+//             INSERT_NEW_TABLE_COMMAND,
+//             ({ columns, rows, includeHeaders }) => {
+//                 const tableNode = $createTableNodeWithDimensions(
+//                     Number(rows),
+//                     Number(columns),
+//                     includeHeaders,
+//                 );
+//                 $insertNodes([tableNode]);
+//                 return true;
+//             },
+//             COMMAND_PRIORITY_EDITOR,
+//         );
+//     }, [cellContext, cellEditorConfig, children, editor]);
+
+//     return null;
+// }

@@ -1,10 +1,8 @@
-import {$createLinkNode} from '@lexical/link';
-import {$createListItemNode, $createListNode} from '@lexical/list';
-import {LexicalComposer} from '@lexical/react/LexicalComposer';
-import {$createHeadingNode, $createQuoteNode} from '@lexical/rich-text';
-import {$createParagraphNode, $createTextNode, $getRoot} from 'lexical';
-
-
+import { $createLinkNode } from '@lexical/link';
+import { $createListItemNode, $createListNode } from '@lexical/list';
+import { LexicalComposer } from '@lexical/react/LexicalComposer';
+import { $createHeadingNode, $createQuoteNode } from '@lexical/rich-text';
+import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { CharacterLimitPlugin } from '@lexical/react/LexicalCharacterLimitPlugin';
 import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
@@ -20,16 +18,10 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import useLexicalEditable from '@lexical/react/useLexicalEditable';
-
 import { useEffect, useState, useMemo } from "react";
+import { ContentEditable } from '@lexical/react/LexicalContentEditable';
+import { useSharedHistoryContext, useSettings, SettingsContext, SharedAutocompleteContext, SharedHistoryContext } from './utils/context';
 
-import { useSharedHistoryContext, useSettings, SettingsContext, SharedAutocompleteContext, SharedHistoryContext,
-useSharedAutocompleteContext
-} from './utils/context';
-import { Point, Rect, addSwipeDownListener, addSwipeLeftListener, addSwipeRightListener, addSwipeUpListener, baseTheme, commentTheme, 
-  getDOMRangeRect, getSelectedNode, isHTMLElement, isPoint, sanitizeUrl, setFloatingElemPosition, setFloatingElemPositionForLinkEditor, stickyEditorTheme,
-  validateUrl
-  } from './utils/utils';
 import {
   $createCollapsibleContainerNode, $createCollapsibleContentNode, $createCollapsibleTitleNode, $isCollapsibleContainerNode,
   $isCollapsibleContentNode, $isCollapsibleTitleNode, AutoEmbedDialog, CellContext, CellContextShape, CellEditorConfig, CodeActionMenuPlugin
@@ -50,26 +42,10 @@ import {
   EmojiPickerPlugin, CollapsiblePlugin, ContextMenuPlugin, InlineImagePlugin, NewMentionsPlugin,
 } from './utils/PLUGIN';
 
-import {$createAutocompleteNode, $createEmojiNode, $createEquationNode, $createExcalidrawNode, $createFigmaNode, $createImageNode,
-  $createInlineImageNode,$createKeywordNode,$createPageBreakNode, $createLayoutContainerNode, $createLayoutItemNode, $createMentionNode,
-  $createPollNode,$createStickyNode, $createTweetNode, $createYouTubeNode, $isEmojiNode, $isEquationNode, $isExcalidrawNode, $isFigmaNode,
-  $isImageNode, $isInlineImageNode, $isKeywordNode, $isLayoutContainerNode, $isLayoutItemNode, $isMentionNode, $isPageBreakNode, $isPollNode,
-  $isStickyNode, $isTweetNode, $isYouTubeNode,AutocompleteNode,EMOJI, EQUATION, EmojiNode, EquationComponent, EquationNode, ExcalidrawComponent, ExcalidrawElementFragment,
-  ExcalidrawImage, ExcalidrawModal, ExcalidrawNode,FigmaNode, HR, IMAGE, ImageComponent, ImageNode, ImagePayload, InlineImageComponent, 
-  InlineImageNode, InlineImagePayload, KeywordNode, LayoutContainerNode, LayoutItemNode, MentionNode, Option, Options, PLAYGROUND_TRANSFORMERS,
-  PageBreakNode,PlaygroundNodes,PollComponent,PollNode, Position, RIGHT_CLICK_IMAGE_COMMAND, SerializedAutocompleteNode, SerializedEmojiNode,
-  SerializedEquationNode, SerializedExcalidrawNode, SerializedFigmaNode, SerializedImageNode, SerializedInlineImageNode, SerializedKeywordNode, 
-  SerializedLayoutContainerNode,SerializedLayoutItemNode, SerializedMentionNode, SerializedPageBreakNode, SerializedPollNode, SerializedStickyNode,
-  SerializedTweetNode,SerializedYouTubeNode, StickyComponent, StickyNode, TABLE, TWEET, TweetNode, UpdateInlineImageDialog, UpdateInlineImagePayload,
-  YouTubeNode, createPollOption, useCallbackRefState
+import { PlaygroundNodes } from "./utils/NODES"
 
-} from "./utils/NODES"
-
-import {
-  ContentEditable,Placeholder, Switch, Button, ColorPicker, CopyButton, DialogActions, DialogButtonsList, DropDown, DropDownItem,
-  DropdownColorPicker,EquationEditor, FileInput, ImageResizer, KatexEquationAlterer, KatexRenderer, LexicalContentEditable, Modal,
-  Position, PrettierButton, Select, TextInput, canBePrettier, toHex
-} from './utils/LibLexical';
+import { Placeholder, Switch } from './utils/LibLexical';
+import { baseTheme } from './utils/utils';
 
 
 
@@ -134,7 +110,7 @@ function Settings(): JSX.Element {
       />
       {showSettings ? (
         <div className="switches">
-          {isRichText && isDevPlayground && (
+          {isRichText && (
             <Switch
               onClick={() => {
                 setOption('isCollab', !isCollab);
@@ -144,19 +120,16 @@ function Settings(): JSX.Element {
               text="Collaboration"
             />
           )}
-          {isDevPlayground && (
-            <Switch
-              onClick={() => {
-                if (isSplitScreen) {
-                  window.parent.location.href = `/${search}`;
-                } else {
-                  window.location.href = `/split/${search}`;
-                }
-              }}
-              checked={isSplitScreen}
-              text="Split Screen"
-            />
-          )}
+
+          <Switch
+            onClick={() => {
+              if (isSplitScreen) {window.parent.location.href = `/${search}`;} 
+              else {window.location.href = `/split/${search}`;}
+            }}
+            checked={isSplitScreen}
+            text="Split Screen"
+          />
+
           <Switch
             onClick={() => setOption('measureTypingPerf', !measureTypingPerf)}
             checked={measureTypingPerf}
@@ -276,7 +249,7 @@ export function Editor(): JSX.Element {
 
   useEffect(() => {
     const updateViewPortWidth = () => {
-      const isNextSmallWidthViewport =false
+      const isNextSmallWidthViewport = false
       if (isNextSmallWidthViewport !== isSmallWidthViewport) {
         setIsSmallWidthViewport(isNextSmallWidthViewport);
       }
@@ -299,26 +272,26 @@ export function Editor(): JSX.Element {
         <DragDropPaste />
         <AutoFocusPlugin />
         <ClearEditorPlugin />
-        <ComponentPickerPlugin />
+        {/* <ComponentPickerPlugin /> */}
         <EmojiPickerPlugin />
         <AutoEmbedPlugin />
 
-        <MentionsPlugin />
+        {/* <MentionsPlugin /> */}
         <EmojisPlugin />
         <HashtagPlugin />
         <KeywordsPlugin />
-        <SpeechToTextPlugin />
-        <AutoLinkPlugin />
-        <CommentPlugin/>
+        {/* <SpeechToTextPlugin /> */}
+        {/* <AutoLinkPlugin /> */}
+        <CommentPlugin />
         {isRichText ? (
           <>
             {isCollab ? <></>
-            // ( <CollaborationPlugin
-            //     id="main"
-            //     providerFactory={createWebsocketProvider}
-            //     shouldBootstrap={!skipCollaborationInit}
-            //   />)
-            : (<HistoryPlugin externalHistoryState={historyState} />)}
+              // ( <CollaborationPlugin
+              //     id="main"
+              //     providerFactory={createWebsocketProvider}
+              //     shouldBootstrap={!skipCollaborationInit}
+              //   />)
+              : (<HistoryPlugin externalHistoryState={historyState} />)}
             <RichTextPlugin
               contentEditable={
                 <div className="editor-scroller">
@@ -330,7 +303,7 @@ export function Editor(): JSX.Element {
               placeholder={placeholder}
               ErrorBoundary={LexicalErrorBoundary}
             />
-            <MarkdownShortcutPlugin />
+            {/* <MarkdownShortcutPlugin /> */}
             <CodeHighlightPlugin />
             <ListPlugin />
             <CheckListPlugin />
@@ -339,13 +312,13 @@ export function Editor(): JSX.Element {
               hasCellMerge={tableCellMerge}
               hasCellBackgroundColor={tableCellBackgroundColor}
             />
-            <TableCellResizer />
-            <ImagesPlugin />
+            {/* <TableCellResizer /> */}
+            {/* <ImagesPlugin /> */}
             <InlineImagePlugin />
             <LinkPlugin />
             <PollPlugin />
             <TwitterPlugin />
-            <YouTubePlugin />
+            {/* <YouTubePlugin /> */}
             <FigmaPlugin />
             {!isEditable && <LexicalClickableLinkPlugin />}
             <HorizontalRulePlugin />
@@ -365,10 +338,10 @@ export function Editor(): JSX.Element {
                   isLinkEditMode={isLinkEditMode}
                   setIsLinkEditMode={setIsLinkEditMode}
                 />
-                <TableCellActionMenuPlugin
+                {/* <TableCellActionMenuPlugin
                   anchorElem={floatingAnchorElem}
                   cellMerge={true}
-                />
+                /> */}
                 <FloatingTextFormatToolbarPlugin
                   anchorElem={floatingAnchorElem}
                 />
@@ -413,7 +386,7 @@ function prepopulatedRichText() {
     quote.append(
       $createTextNode(
         `In case you were wondering what the black box at the bottom is – it's the debug view, showing the current state of the editor. ` +
-          `You can disable it by pressing on the settings control in the bottom-left of your screen and toggling the debug view setting.`,
+        `You can disable it by pressing on the settings control in the bottom-left of your screen and toggling the debug view setting.`,
       ),
     );
     root.append(quote);
@@ -485,15 +458,15 @@ function prepopulatedRichText() {
 
 function App(): JSX.Element {
   const {
-    settings: {isCollab, emptyEditor, measureTypingPerf},
+    settings: { isCollab, emptyEditor, measureTypingPerf },
   } = useSettings();
 
   const initialConfig = {
     editorState: isCollab
       ? null
       : emptyEditor
-      ? undefined
-      : prepopulatedRichText,
+        ? undefined
+        : prepopulatedRichText,
     namespace: 'Playground',
     nodes: [...PlaygroundNodes],
     onError: (error: Error) => {

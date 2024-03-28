@@ -1,9 +1,10 @@
-import { 
-    CollapsibleTitleNode, CollapsibleContentNode, CollapsibleContainerNode, EmojisPlugin, FloatingTextFormatToolbarPlugin, 
-    KeywordsPlugin, LinkPlugin, TreeViewPlugin 
+import {
+    CollapsibleTitleNode, CollapsibleContentNode, CollapsibleContainerNode, EmojisPlugin, FloatingTextFormatToolbarPlugin,
+    KeywordsPlugin, LinkPlugin, TreeViewPlugin
 } from './PLUGIN';
 import { CodeNode, CodeHighlightNode } from '@lexical/code';
 import { AutoLinkNode, LinkNode } from '@lexical/link';
+import {TableCellNode, TableNode, TableRowNode} from '@lexical/table';
 import { ListNode, ListItemNode } from '@lexical/list';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { CollaborationPlugin } from '@lexical/react/LexicalCollaborationPlugin';
@@ -15,6 +16,26 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { HeadingNode, QuoteNode } from '@lexical/rich-text';
+import {
+    $convertFromMarkdownString,
+    $convertToMarkdownString,
+    CHECK_LIST,
+    ELEMENT_TRANSFORMERS,
+    ElementTransformer,
+    TEXT_FORMAT_TRANSFORMERS,
+    TEXT_MATCH_TRANSFORMERS,
+    TextMatchTransformer,
+    Transformer,
+} from '@lexical/markdown';
+import {
+    ExcalidrawElement,
+    NonDeleted,
+  } from '@excalidraw/excalidraw/types/element/types';
+import {AppState, BinaryFiles, ExcalidrawImperativeAPI} from '@excalidraw/excalidraw/types/types';
+
+import {mergeRegister} from '@lexical/utils';
+import { $createHorizontalRuleNode, $isHorizontalRuleNode, HorizontalRuleNode } from '@lexical/react/LexicalHorizontalRuleNode';
+import {SerializedDecoratorBlockNode, DecoratorBlockNode  } from '@lexical/react/LexicalDecoratorBlockNode';
 import katex from 'katex';
 import { Klass, LexicalNode, $createTextNode, $isParagraphNode, $isTextNode, Spread, SerializedLexicalNode, DOMConversionOutput, DecoratorNode, NodeKey, EditorConfig, DOMConversionMap, LexicalEditor, DOMExportOutput, $isNodeSelection, $getSelection, $getNodeByKey, CLICK_COMMAND, COMMAND_PRIORITY_LOW, KEY_DELETE_COMMAND, KEY_BACKSPACE_COMMAND, ElementFormatType, SerializedEditor, createEditor, $setSelection, BaseSelection, SELECTION_CHANGE_COMMAND, COMMAND_PRIORITY_HIGH, KEY_ESCAPE_COMMAND, $applyNodeReplacement, LexicalCommand, createCommand, $isRangeSelection, DRAGSTART_COMMAND, KEY_ENTER_COMMAND, SerializedTextNode, TextNode, SerializedElementNode, ElementNode } from 'lexical';
 import React, { Suspense, ReactPortal, useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
@@ -27,12 +48,695 @@ import { useModal } from './hooks';
 import { joinClasses } from './utils';
 
 
-export const PlaygroundNodes: Array<Klass<LexicalNode>> = [
-    HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, TableNode, TableCellNode, TableRowNode, HashtagNode,
-    CodeHighlightNode, AutoLinkNode, LinkNode, OverflowNode, PollNode, StickyNode, ImageNode, InlineImageNode, MentionNode, EmojiNode,
-    ExcalidrawNode, EquationNode, AutocompleteNode, KeywordNode, HorizontalRuleNode, TweetNode, YouTubeNode, FigmaNode, MarkNode,
-    CollapsibleContainerNode, CollapsibleContentNode, CollapsibleTitleNode, PageBreakNode, LayoutContainerNode, LayoutItemNode,
-];
+export class YouTubeNode extends DecoratorBlockNode {
+    __id: string;
+
+    static getType(): string {
+        return 'youtube';
+    }
+
+    static clone(node: YouTubeNode): YouTubeNode {
+        return new YouTubeNode(node.__id, node.__format, node.__key);
+    }
+
+    static importJSON(serializedNode: SerializedYouTubeNode): YouTubeNode {
+        const node = $createYouTubeNode(serializedNode.videoID);
+        node.setFormat(serializedNode.format);
+        return node;
+    }
+
+    exportJSON(): SerializedYouTubeNode {
+        return {
+            ...super.exportJSON(),
+            type: 'youtube',
+            version: 1,
+            videoID: this.__id,
+        };
+    }
+
+    constructor(id: string, format?: ElementFormatType, key?: NodeKey) {
+        super(format, key);
+        this.__id = id;
+    }
+
+    exportDOM(): DOMExportOutput {
+        const element = document.createElement('iframe');
+        element.setAttribute('data-lexical-youtube', this.__id);
+        element.setAttribute('width', '560');
+        element.setAttribute('height', '315');
+        element.setAttribute(
+            'src',
+            `https://www.youtube-nocookie.com/embed/${this.__id}`,
+        );
+        element.setAttribute('frameborder', '0');
+        element.setAttribute(
+            'allow',
+            'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+        );
+        element.setAttribute('allowfullscreen', 'true');
+        element.setAttribute('title', 'YouTube video');
+        return { element };
+    }
+
+    static importDOM(): DOMConversionMap | null {
+        return {
+            iframe: (domNode: HTMLElement) => {
+                if (!domNode.hasAttribute('data-lexical-youtube')) {
+                    return null;
+                }
+                return {
+                    conversion: convertYoutubeElement,
+                    priority: 1,
+                };
+            },
+        };
+    }
+
+    updateDOM(): false {
+        return false;
+    }
+
+    getId(): string {
+        return this.__id;
+    }
+
+    getTextContent(
+        _includeInert?: boolean | undefined,
+        _includeDirectionless?: false | undefined,
+    ): string {
+        return `https://www.youtube.com/watch?v=${this.__id}`;
+    }
+
+    decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
+        const embedBlockTheme = config.theme.embedBlock || {};
+        const className = {
+            base: embedBlockTheme.base || '',
+            focus: embedBlockTheme.focus || '',
+        };
+        return (
+            <YouTubeComponent
+                className={className}
+                format={this.__format}
+                nodeKey={this.getKey()}
+                videoID={this.__id}
+            />
+        );
+    }
+}
+
+export class TweetNode extends DecoratorBlockNode {
+    __id: string;
+
+    static getType(): string {
+        return 'tweet';
+    }
+
+    static clone(node: TweetNode): TweetNode {
+        return new TweetNode(node.__id, node.__format, node.__key);
+    }
+
+    static importJSON(serializedNode: SerializedTweetNode): TweetNode {
+        const node = $createTweetNode(serializedNode.id);
+        node.setFormat(serializedNode.format);
+        return node;
+    }
+
+    exportJSON(): SerializedTweetNode {
+        return {
+            ...super.exportJSON(),
+            id: this.getId(),
+            type: 'tweet',
+            version: 1,
+        };
+    }
+
+    static importDOM(): DOMConversionMap<HTMLDivElement> | null {
+        return {
+            div: (domNode: HTMLDivElement) => {
+                if (!domNode.hasAttribute('data-lexical-tweet-id')) {
+                    return null;
+                }
+                return {
+                    conversion: convertTweetElement,
+                    priority: 2,
+                };
+            },
+        };
+    }
+
+    exportDOM(): DOMExportOutput {
+        const element = document.createElement('div');
+        element.setAttribute('data-lexical-tweet-id', this.__id);
+        const text = document.createTextNode(this.getTextContent());
+        element.append(text);
+        return { element };
+    }
+
+    constructor(id: string, format?: ElementFormatType, key?: NodeKey) {
+        super(format, key);
+        this.__id = id;
+    }
+
+    getId(): string {
+        return this.__id;
+    }
+
+    getTextContent(
+        _includeInert?: boolean | undefined,
+        _includeDirectionless?: false | undefined,
+    ): string {
+        return `https://x.com/i/web/status/${this.__id}`;
+    }
+
+    decorate(editor: LexicalEditor, config: EditorConfig): JSX.Element {
+        const embedBlockTheme = config.theme.embedBlock || {};
+        const className = {
+            base: embedBlockTheme.base || '',
+            focus: embedBlockTheme.focus || '',
+        };
+        return (
+            <TweetComponent
+                className={className}
+                format={this.__format}
+                loadingComponent="Loading..."
+                nodeKey={this.getKey()}
+                tweetID={this.__id}
+            />
+        );
+    }
+}
+export class StickyNode extends DecoratorNode<JSX.Element> {
+    __x: number;
+    __y: number;
+    __color: StickyNoteColor;
+    __caption: LexicalEditor;
+
+    static getType(): string {
+        return 'sticky';
+    }
+
+    static clone(node: StickyNode): StickyNode {
+        return new StickyNode(
+            node.__x,
+            node.__y,
+            node.__color,
+            node.__caption,
+            node.__key,
+        );
+    }
+    static importJSON(serializedNode: SerializedStickyNode): StickyNode {
+        const stickyNode = new StickyNode(
+            serializedNode.xOffset,
+            serializedNode.yOffset,
+            serializedNode.color,
+        );
+        const caption = serializedNode.caption;
+        const nestedEditor = stickyNode.__caption;
+        const editorState = nestedEditor.parseEditorState(caption.editorState);
+        if (!editorState.isEmpty()) {
+            nestedEditor.setEditorState(editorState);
+        }
+        return stickyNode;
+    }
+
+    constructor(
+        x: number,
+        y: number,
+        color: 'pink' | 'yellow',
+        caption?: LexicalEditor,
+        key?: NodeKey,
+    ) {
+        super(key);
+        this.__x = x;
+        this.__y = y;
+        this.__caption = caption || createEditor();
+        this.__color = color;
+    }
+
+    exportJSON(): SerializedStickyNode {
+        return {
+            caption: this.__caption.toJSON(),
+            color: this.__color,
+            type: 'sticky',
+            version: 1,
+            xOffset: this.__x,
+            yOffset: this.__y,
+        };
+    }
+
+    createDOM(config: EditorConfig): HTMLElement {
+        const div = document.createElement('div');
+        div.style.display = 'contents';
+        return div;
+    }
+
+    updateDOM(): false {
+        return false;
+    }
+
+    setPosition(x: number, y: number): void {
+        const writable = this.getWritable();
+        writable.__x = x;
+        writable.__y = y;
+        $setSelection(null);
+    }
+
+    toggleColor(): void {
+        const writable = this.getWritable();
+        writable.__color = writable.__color === 'pink' ? 'yellow' : 'pink';
+    }
+
+    decorate(editor: LexicalEditor, config: EditorConfig): JSX.Element {
+        return createPortal(
+            <Suspense fallback={null}>
+                <StickyComponent
+                    color={this.__color}
+                    x={this.__x}
+                    y={this.__y}
+                    nodeKey={this.getKey()}
+                    caption={this.__caption}
+                />
+            </Suspense>,
+            document.body,
+        );
+    }
+
+    isIsolated(): true {
+        return true;
+    }
+}
+export class PollNode extends DecoratorNode<JSX.Element> {
+    __question: string;
+    __options: Options;
+
+    static getType(): string {
+        return 'poll';
+    }
+
+    static clone(node: PollNode): PollNode {
+        return new PollNode(node.__question, node.__options, node.__key);
+    }
+
+    static importJSON(serializedNode: SerializedPollNode): PollNode {
+        const node = $createPollNode(
+            serializedNode.question,
+            serializedNode.options,
+        );
+        serializedNode.options.forEach(node.addOption);
+        return node;
+    }
+
+    constructor(question: string, options: Options, key?: NodeKey) {
+        super(key);
+        this.__question = question;
+        this.__options = options;
+    }
+
+    exportJSON(): SerializedPollNode {
+        return {
+            options: this.__options,
+            question: this.__question,
+            type: 'poll',
+            version: 1,
+        };
+    }
+
+    addOption(option: Option): void {
+        const self = this.getWritable();
+        const options = Array.from(self.__options);
+        options.push(option);
+        self.__options = options;
+    }
+
+    deleteOption(option: Option): void {
+        const self = this.getWritable();
+        const options = Array.from(self.__options);
+        const index = options.indexOf(option);
+        options.splice(index, 1);
+        self.__options = options;
+    }
+
+    setOptionText(option: Option, text: string): void {
+        const self = this.getWritable();
+        const clonedOption = cloneOption(option, text);
+        const options = Array.from(self.__options);
+        const index = options.indexOf(option);
+        options[index] = clonedOption;
+        self.__options = options;
+    }
+
+    toggleVote(option: Option, clientID: number): void {
+        const self = this.getWritable();
+        const votes = option.votes;
+        const votesClone = Array.from(votes);
+        const voteIndex = votes.indexOf(clientID);
+        if (voteIndex === -1) {
+            votesClone.push(clientID);
+        } else {
+            votesClone.splice(voteIndex, 1);
+        }
+        const clonedOption = cloneOption(option, option.text, votesClone);
+        const options = Array.from(self.__options);
+        const index = options.indexOf(option);
+        options[index] = clonedOption;
+        self.__options = options;
+    }
+
+    static importDOM(): DOMConversionMap | null {
+        return {
+            span: (domNode: HTMLElement) => {
+                if (!domNode.hasAttribute('data-lexical-poll-question')) {
+                    return null;
+                }
+                return {
+                    conversion: convertPollElement,
+                    priority: 2,
+                };
+            },
+        };
+    }
+
+    exportDOM(): DOMExportOutput {
+        const element = document.createElement('span');
+        element.setAttribute('data-lexical-poll-question', this.__question);
+        element.setAttribute(
+            'data-lexical-poll-options',
+            JSON.stringify(this.__options),
+        );
+        return { element };
+    }
+
+    createDOM(): HTMLElement {
+        const elem = document.createElement('span');
+        elem.style.display = 'inline-block';
+        return elem;
+    }
+
+    updateDOM(): false {
+        return false;
+    }
+
+    decorate(): JSX.Element {
+        return (
+            <Suspense fallback={null}>
+                <PollComponent
+                    question={this.__question}
+                    options={this.__options}
+                    nodeKey={this.__key}
+                />
+            </Suspense>
+        );
+    }
+}
+
+export class ImageNode extends DecoratorNode<JSX.Element> {
+    __src: string;
+    __altText: string;
+    __width: 'inherit' | number;
+    __height: 'inherit' | number;
+    __maxWidth: number;
+    __showCaption: boolean;
+    __caption: LexicalEditor;
+    // Captions cannot yet be used within editor cells
+    __captionsEnabled: boolean;
+
+    static getType(): string {
+        return 'image';
+    }
+
+    static clone(node: ImageNode): ImageNode {
+        return new ImageNode(
+            node.__src,
+            node.__altText,
+            node.__maxWidth,
+            node.__width,
+            node.__height,
+            node.__showCaption,
+            node.__caption,
+            node.__captionsEnabled,
+            node.__key,
+        );
+    }
+
+    static importJSON(serializedNode: SerializedImageNode): ImageNode {
+        const { altText, height, width, maxWidth, caption, src, showCaption } =
+            serializedNode;
+        const node = $createImageNode({
+            altText,
+            height,
+            maxWidth,
+            showCaption,
+            src,
+            width,
+        });
+        const nestedEditor = node.__caption;
+        const editorState = nestedEditor.parseEditorState(caption.editorState);
+        if (!editorState.isEmpty()) {
+            nestedEditor.setEditorState(editorState);
+        }
+        return node;
+    }
+
+    exportDOM(): DOMExportOutput {
+        const element = document.createElement('img');
+        element.setAttribute('src', this.__src);
+        element.setAttribute('alt', this.__altText);
+        element.setAttribute('width', this.__width.toString());
+        element.setAttribute('height', this.__height.toString());
+        return { element };
+    }
+
+    static importDOM(): DOMConversionMap | null {
+        return {
+            img: (node: Node) => ({
+                conversion: convertImageElement,
+                priority: 0,
+            }),
+        };
+    }
+
+    constructor(
+        src: string,
+        altText: string,
+        maxWidth: number,
+        width?: 'inherit' | number,
+        height?: 'inherit' | number,
+        showCaption?: boolean,
+        caption?: LexicalEditor,
+        captionsEnabled?: boolean,
+        key?: NodeKey,
+    ) {
+        super(key);
+        this.__src = src;
+        this.__altText = altText;
+        this.__maxWidth = maxWidth;
+        this.__width = width || 'inherit';
+        this.__height = height || 'inherit';
+        this.__showCaption = showCaption || false;
+        this.__caption = caption || createEditor();
+        this.__captionsEnabled = captionsEnabled || captionsEnabled === undefined;
+    }
+
+    exportJSON(): SerializedImageNode {
+        return {
+            altText: this.getAltText(),
+            caption: this.__caption.toJSON(),
+            height: this.__height === 'inherit' ? 0 : this.__height,
+            maxWidth: this.__maxWidth,
+            showCaption: this.__showCaption,
+            src: this.getSrc(),
+            type: 'image',
+            version: 1,
+            width: this.__width === 'inherit' ? 0 : this.__width,
+        };
+    }
+
+    setWidthAndHeight(
+        width: 'inherit' | number,
+        height: 'inherit' | number,
+    ): void {
+        const writable = this.getWritable();
+        writable.__width = width;
+        writable.__height = height;
+    }
+
+    setShowCaption(showCaption: boolean): void {
+        const writable = this.getWritable();
+        writable.__showCaption = showCaption;
+    }
+
+    // View
+
+    createDOM(config: EditorConfig): HTMLElement {
+        const span = document.createElement('span');
+        const theme = config.theme;
+        const className = theme.image;
+        if (className !== undefined) {
+            span.className = className;
+        }
+        return span;
+    }
+
+    updateDOM(): false {
+        return false;
+    }
+
+    getSrc(): string {
+        return this.__src;
+    }
+
+    getAltText(): string {
+        return this.__altText;
+    }
+
+    decorate(): JSX.Element {
+        return (
+            <Suspense fallback={null}>
+                <ImageComponent
+                    src={this.__src}
+                    altText={this.__altText}
+                    width={this.__width}
+                    height={this.__height}
+                    maxWidth={this.__maxWidth}
+                    nodeKey={this.getKey()}
+                    showCaption={this.__showCaption}
+                    caption={this.__caption}
+                    captionsEnabled={this.__captionsEnabled}
+                    resizable={true}
+                />
+            </Suspense>
+        );
+    }
+}
+
+export class ExcalidrawNode extends DecoratorNode<JSX.Element> {
+    __data: string;
+    __width: Dimension;
+    __height: Dimension;
+
+    static getType(): string {
+        return 'excalidraw';
+    }
+
+    static clone(node: ExcalidrawNode): ExcalidrawNode {
+        return new ExcalidrawNode(
+            node.__data,
+            node.__width,
+            node.__height,
+            node.__key,
+        );
+    }
+
+    static importJSON(serializedNode: SerializedExcalidrawNode): ExcalidrawNode {
+        return new ExcalidrawNode(
+            serializedNode.data,
+            serializedNode.width,
+            serializedNode.height,
+        );
+    }
+
+    exportJSON(): SerializedExcalidrawNode {
+        return {
+            data: this.__data,
+            height: this.__height,
+            type: 'excalidraw',
+            version: 1,
+            width: this.__width,
+        };
+    }
+
+    constructor(
+        data = '[]',
+        width: Dimension = 'inherit',
+        height: Dimension = 'inherit',
+        key?: NodeKey,
+    ) {
+        super(key);
+        this.__data = data;
+        this.__width = width;
+        this.__height = height;
+    }
+
+    // View
+    createDOM(config: EditorConfig): HTMLElement {
+        const span = document.createElement('span');
+        const theme = config.theme;
+        const className = theme.image;
+
+        span.style.width =
+            this.__width === 'inherit' ? 'inherit' : `${this.__width}px`;
+        span.style.height =
+            this.__height === 'inherit' ? 'inherit' : `${this.__height}px`;
+
+        if (className !== undefined) {
+            span.className = className;
+        }
+        return span;
+    }
+
+    updateDOM(): false {
+        return false;
+    }
+
+    static importDOM(): DOMConversionMap<HTMLSpanElement> | null {
+        return {
+            span: (domNode: HTMLSpanElement) => {
+                if (!domNode.hasAttribute('data-lexical-excalidraw-json')) {
+                    return null;
+                }
+                return {
+                    conversion: convertExcalidrawElement,
+                    priority: 1,
+                };
+            },
+        };
+    }
+
+    exportDOM(editor: LexicalEditor): DOMExportOutput {
+        const element = document.createElement('span');
+
+        element.style.display = 'inline-block';
+
+        const content = editor.getElementByKey(this.getKey());
+        if (content !== null) {
+            const svg = content.querySelector('svg');
+            if (svg !== null) {
+                element.innerHTML = svg.outerHTML;
+            }
+        }
+
+        element.style.width =
+            this.__width === 'inherit' ? 'inherit' : `${this.__width}px`;
+        element.style.height =
+            this.__height === 'inherit' ? 'inherit' : `${this.__height}px`;
+
+        element.setAttribute('data-lexical-excalidraw-json', this.__data);
+        return { element };
+    }
+
+    setData(data: string): void {
+        const self = this.getWritable();
+        self.__data = data;
+    }
+
+    setWidth(width: Dimension): void {
+        const self = this.getWritable();
+        self.__width = width;
+    }
+
+    setHeight(height: Dimension): void {
+        const self = this.getWritable();
+        self.__height = height;
+    }
+
+    decorate(editor: LexicalEditor, config: EditorConfig): JSX.Element {
+        return (
+            <Suspense fallback={null}>
+                <ExcalidrawComponent nodeKey={this.getKey()} data={this.__data} />
+            </Suspense>
+        );
+    }
+}
 
 
 
@@ -348,134 +1052,7 @@ function convertExcalidrawElement(
     return null;
 }
 
-export class ExcalidrawNode extends DecoratorNode<JSX.Element> {
-    __data: string;
-    __width: Dimension;
-    __height: Dimension;
 
-    static getType(): string {
-        return 'excalidraw';
-    }
-
-    static clone(node: ExcalidrawNode): ExcalidrawNode {
-        return new ExcalidrawNode(
-            node.__data,
-            node.__width,
-            node.__height,
-            node.__key,
-        );
-    }
-
-    static importJSON(serializedNode: SerializedExcalidrawNode): ExcalidrawNode {
-        return new ExcalidrawNode(
-            serializedNode.data,
-            serializedNode.width,
-            serializedNode.height,
-        );
-    }
-
-    exportJSON(): SerializedExcalidrawNode {
-        return {
-            data: this.__data,
-            height: this.__height,
-            type: 'excalidraw',
-            version: 1,
-            width: this.__width,
-        };
-    }
-
-    constructor(
-        data = '[]',
-        width: Dimension = 'inherit',
-        height: Dimension = 'inherit',
-        key?: NodeKey,
-    ) {
-        super(key);
-        this.__data = data;
-        this.__width = width;
-        this.__height = height;
-    }
-
-    // View
-    createDOM(config: EditorConfig): HTMLElement {
-        const span = document.createElement('span');
-        const theme = config.theme;
-        const className = theme.image;
-
-        span.style.width =
-            this.__width === 'inherit' ? 'inherit' : `${this.__width}px`;
-        span.style.height =
-            this.__height === 'inherit' ? 'inherit' : `${this.__height}px`;
-
-        if (className !== undefined) {
-            span.className = className;
-        }
-        return span;
-    }
-
-    updateDOM(): false {
-        return false;
-    }
-
-    static importDOM(): DOMConversionMap<HTMLSpanElement> | null {
-        return {
-            span: (domNode: HTMLSpanElement) => {
-                if (!domNode.hasAttribute('data-lexical-excalidraw-json')) {
-                    return null;
-                }
-                return {
-                    conversion: convertExcalidrawElement,
-                    priority: 1,
-                };
-            },
-        };
-    }
-
-    exportDOM(editor: LexicalEditor): DOMExportOutput {
-        const element = document.createElement('span');
-
-        element.style.display = 'inline-block';
-
-        const content = editor.getElementByKey(this.getKey());
-        if (content !== null) {
-            const svg = content.querySelector('svg');
-            if (svg !== null) {
-                element.innerHTML = svg.outerHTML;
-            }
-        }
-
-        element.style.width =
-            this.__width === 'inherit' ? 'inherit' : `${this.__width}px`;
-        element.style.height =
-            this.__height === 'inherit' ? 'inherit' : `${this.__height}px`;
-
-        element.setAttribute('data-lexical-excalidraw-json', this.__data);
-        return { element };
-    }
-
-    setData(data: string): void {
-        const self = this.getWritable();
-        self.__data = data;
-    }
-
-    setWidth(width: Dimension): void {
-        const self = this.getWritable();
-        self.__width = width;
-    }
-
-    setHeight(height: Dimension): void {
-        const self = this.getWritable();
-        self.__height = height;
-    }
-
-    decorate(editor: LexicalEditor, config: EditorConfig): JSX.Element {
-        return (
-            <Suspense fallback={null}>
-                <ExcalidrawComponent nodeKey={this.getKey()} data={this.__data} />
-            </Suspense>
-        );
-    }
-}
 
 export function $createExcalidrawNode(): ExcalidrawNode {
     return new ExcalidrawNode();
@@ -1086,101 +1663,7 @@ function convertYoutubeElement(
     return null;
 }
 
-export class YouTubeNode extends DecoratorBlockNode {
-    __id: string;
 
-    static getType(): string {
-        return 'youtube';
-    }
-
-    static clone(node: YouTubeNode): YouTubeNode {
-        return new YouTubeNode(node.__id, node.__format, node.__key);
-    }
-
-    static importJSON(serializedNode: SerializedYouTubeNode): YouTubeNode {
-        const node = $createYouTubeNode(serializedNode.videoID);
-        node.setFormat(serializedNode.format);
-        return node;
-    }
-
-    exportJSON(): SerializedYouTubeNode {
-        return {
-            ...super.exportJSON(),
-            type: 'youtube',
-            version: 1,
-            videoID: this.__id,
-        };
-    }
-
-    constructor(id: string, format?: ElementFormatType, key?: NodeKey) {
-        super(format, key);
-        this.__id = id;
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('iframe');
-        element.setAttribute('data-lexical-youtube', this.__id);
-        element.setAttribute('width', '560');
-        element.setAttribute('height', '315');
-        element.setAttribute(
-            'src',
-            `https://www.youtube-nocookie.com/embed/${this.__id}`,
-        );
-        element.setAttribute('frameborder', '0');
-        element.setAttribute(
-            'allow',
-            'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
-        );
-        element.setAttribute('allowfullscreen', 'true');
-        element.setAttribute('title', 'YouTube video');
-        return { element };
-    }
-
-    static importDOM(): DOMConversionMap | null {
-        return {
-            iframe: (domNode: HTMLElement) => {
-                if (!domNode.hasAttribute('data-lexical-youtube')) {
-                    return null;
-                }
-                return {
-                    conversion: convertYoutubeElement,
-                    priority: 1,
-                };
-            },
-        };
-    }
-
-    updateDOM(): false {
-        return false;
-    }
-
-    getId(): string {
-        return this.__id;
-    }
-
-    getTextContent(
-        _includeInert?: boolean | undefined,
-        _includeDirectionless?: false | undefined,
-    ): string {
-        return `https://www.youtube.com/watch?v=${this.__id}`;
-    }
-
-    decorate(_editor: LexicalEditor, config: EditorConfig): JSX.Element {
-        const embedBlockTheme = config.theme.embedBlock || {};
-        const className = {
-            base: embedBlockTheme.base || '',
-            focus: embedBlockTheme.focus || '',
-        };
-        return (
-            <YouTubeComponent
-                className={className}
-                format={this.__format}
-                nodeKey={this.getKey()}
-                videoID={this.__id}
-            />
-        );
-    }
-}
 
 export function $createYouTubeNode(videoID: string): YouTubeNode {
     return new YouTubeNode(videoID);
@@ -1299,87 +1782,7 @@ export type SerializedTweetNode = Spread<
     SerializedDecoratorBlockNode
 >;
 
-export class TweetNode extends DecoratorBlockNode {
-    __id: string;
 
-    static getType(): string {
-        return 'tweet';
-    }
-
-    static clone(node: TweetNode): TweetNode {
-        return new TweetNode(node.__id, node.__format, node.__key);
-    }
-
-    static importJSON(serializedNode: SerializedTweetNode): TweetNode {
-        const node = $createTweetNode(serializedNode.id);
-        node.setFormat(serializedNode.format);
-        return node;
-    }
-
-    exportJSON(): SerializedTweetNode {
-        return {
-            ...super.exportJSON(),
-            id: this.getId(),
-            type: 'tweet',
-            version: 1,
-        };
-    }
-
-    static importDOM(): DOMConversionMap<HTMLDivElement> | null {
-        return {
-            div: (domNode: HTMLDivElement) => {
-                if (!domNode.hasAttribute('data-lexical-tweet-id')) {
-                    return null;
-                }
-                return {
-                    conversion: convertTweetElement,
-                    priority: 2,
-                };
-            },
-        };
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('div');
-        element.setAttribute('data-lexical-tweet-id', this.__id);
-        const text = document.createTextNode(this.getTextContent());
-        element.append(text);
-        return { element };
-    }
-
-    constructor(id: string, format?: ElementFormatType, key?: NodeKey) {
-        super(format, key);
-        this.__id = id;
-    }
-
-    getId(): string {
-        return this.__id;
-    }
-
-    getTextContent(
-        _includeInert?: boolean | undefined,
-        _includeDirectionless?: false | undefined,
-    ): string {
-        return `https://x.com/i/web/status/${this.__id}`;
-    }
-
-    decorate(editor: LexicalEditor, config: EditorConfig): JSX.Element {
-        const embedBlockTheme = config.theme.embedBlock || {};
-        const className = {
-            base: embedBlockTheme.base || '',
-            focus: embedBlockTheme.focus || '',
-        };
-        return (
-            <TweetComponent
-                className={className}
-                format={this.__format}
-                loadingComponent="Loading..."
-                nodeKey={this.getKey()}
-                tweetID={this.__id}
-            />
-        );
-    }
-}
 
 export function $createTweetNode(tweetID: string): TweetNode {
     return new TweetNode(tweetID);
@@ -1407,106 +1810,7 @@ export type SerializedStickyNode = Spread<
     SerializedLexicalNode
 >;
 
-export class StickyNode extends DecoratorNode<JSX.Element> {
-    __x: number;
-    __y: number;
-    __color: StickyNoteColor;
-    __caption: LexicalEditor;
 
-    static getType(): string {
-        return 'sticky';
-    }
-
-    static clone(node: StickyNode): StickyNode {
-        return new StickyNode(
-            node.__x,
-            node.__y,
-            node.__color,
-            node.__caption,
-            node.__key,
-        );
-    }
-    static importJSON(serializedNode: SerializedStickyNode): StickyNode {
-        const stickyNode = new StickyNode(
-            serializedNode.xOffset,
-            serializedNode.yOffset,
-            serializedNode.color,
-        );
-        const caption = serializedNode.caption;
-        const nestedEditor = stickyNode.__caption;
-        const editorState = nestedEditor.parseEditorState(caption.editorState);
-        if (!editorState.isEmpty()) {
-            nestedEditor.setEditorState(editorState);
-        }
-        return stickyNode;
-    }
-
-    constructor(
-        x: number,
-        y: number,
-        color: 'pink' | 'yellow',
-        caption?: LexicalEditor,
-        key?: NodeKey,
-    ) {
-        super(key);
-        this.__x = x;
-        this.__y = y;
-        this.__caption = caption || createEditor();
-        this.__color = color;
-    }
-
-    exportJSON(): SerializedStickyNode {
-        return {
-            caption: this.__caption.toJSON(),
-            color: this.__color,
-            type: 'sticky',
-            version: 1,
-            xOffset: this.__x,
-            yOffset: this.__y,
-        };
-    }
-
-    createDOM(config: EditorConfig): HTMLElement {
-        const div = document.createElement('div');
-        div.style.display = 'contents';
-        return div;
-    }
-
-    updateDOM(): false {
-        return false;
-    }
-
-    setPosition(x: number, y: number): void {
-        const writable = this.getWritable();
-        writable.__x = x;
-        writable.__y = y;
-        $setSelection(null);
-    }
-
-    toggleColor(): void {
-        const writable = this.getWritable();
-        writable.__color = writable.__color === 'pink' ? 'yellow' : 'pink';
-    }
-
-    decorate(editor: LexicalEditor, config: EditorConfig): JSX.Element {
-        return createPortal(
-            <Suspense fallback={null}>
-                <StickyComponent
-                    color={this.__color}
-                    x={this.__x}
-                    y={this.__y}
-                    nodeKey={this.getKey()}
-                    caption={this.__caption}
-                />
-            </Suspense>,
-            document.body,
-        );
-    }
-
-    isIsolated(): true {
-        return true;
-    }
-}
 
 export function $isStickyNode(
     node: LexicalNode | null | undefined,
@@ -1816,129 +2120,7 @@ function convertPollElement(domNode: HTMLElement): DOMConversionOutput | null {
     return null;
 }
 
-export class PollNode extends DecoratorNode<JSX.Element> {
-    __question: string;
-    __options: Options;
 
-    static getType(): string {
-        return 'poll';
-    }
-
-    static clone(node: PollNode): PollNode {
-        return new PollNode(node.__question, node.__options, node.__key);
-    }
-
-    static importJSON(serializedNode: SerializedPollNode): PollNode {
-        const node = $createPollNode(
-            serializedNode.question,
-            serializedNode.options,
-        );
-        serializedNode.options.forEach(node.addOption);
-        return node;
-    }
-
-    constructor(question: string, options: Options, key?: NodeKey) {
-        super(key);
-        this.__question = question;
-        this.__options = options;
-    }
-
-    exportJSON(): SerializedPollNode {
-        return {
-            options: this.__options,
-            question: this.__question,
-            type: 'poll',
-            version: 1,
-        };
-    }
-
-    addOption(option: Option): void {
-        const self = this.getWritable();
-        const options = Array.from(self.__options);
-        options.push(option);
-        self.__options = options;
-    }
-
-    deleteOption(option: Option): void {
-        const self = this.getWritable();
-        const options = Array.from(self.__options);
-        const index = options.indexOf(option);
-        options.splice(index, 1);
-        self.__options = options;
-    }
-
-    setOptionText(option: Option, text: string): void {
-        const self = this.getWritable();
-        const clonedOption = cloneOption(option, text);
-        const options = Array.from(self.__options);
-        const index = options.indexOf(option);
-        options[index] = clonedOption;
-        self.__options = options;
-    }
-
-    toggleVote(option: Option, clientID: number): void {
-        const self = this.getWritable();
-        const votes = option.votes;
-        const votesClone = Array.from(votes);
-        const voteIndex = votes.indexOf(clientID);
-        if (voteIndex === -1) {
-            votesClone.push(clientID);
-        } else {
-            votesClone.splice(voteIndex, 1);
-        }
-        const clonedOption = cloneOption(option, option.text, votesClone);
-        const options = Array.from(self.__options);
-        const index = options.indexOf(option);
-        options[index] = clonedOption;
-        self.__options = options;
-    }
-
-    static importDOM(): DOMConversionMap | null {
-        return {
-            span: (domNode: HTMLElement) => {
-                if (!domNode.hasAttribute('data-lexical-poll-question')) {
-                    return null;
-                }
-                return {
-                    conversion: convertPollElement,
-                    priority: 2,
-                };
-            },
-        };
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('span');
-        element.setAttribute('data-lexical-poll-question', this.__question);
-        element.setAttribute(
-            'data-lexical-poll-options',
-            JSON.stringify(this.__options),
-        );
-        return { element };
-    }
-
-    createDOM(): HTMLElement {
-        const elem = document.createElement('span');
-        elem.style.display = 'inline-block';
-        return elem;
-    }
-
-    updateDOM(): false {
-        return false;
-    }
-
-    decorate(): JSX.Element {
-        return (
-            <Suspense fallback={null}>
-                <PollComponent
-                    question={this.__question}
-                    options={this.__options}
-                    nodeKey={this.__key}
-                />
-            </Suspense>
-        );
-    }
-}
 
 export function $createPollNode(question: string, options: Options): PollNode {
     return new PollNode(question, options);
@@ -2966,165 +3148,7 @@ export type SerializedImageNode = Spread<
     SerializedLexicalNode
 >;
 
-export class ImageNode extends DecoratorNode<JSX.Element> {
-    __src: string;
-    __altText: string;
-    __width: 'inherit' | number;
-    __height: 'inherit' | number;
-    __maxWidth: number;
-    __showCaption: boolean;
-    __caption: LexicalEditor;
-    // Captions cannot yet be used within editor cells
-    __captionsEnabled: boolean;
 
-    static getType(): string {
-        return 'image';
-    }
-
-    static clone(node: ImageNode): ImageNode {
-        return new ImageNode(
-            node.__src,
-            node.__altText,
-            node.__maxWidth,
-            node.__width,
-            node.__height,
-            node.__showCaption,
-            node.__caption,
-            node.__captionsEnabled,
-            node.__key,
-        );
-    }
-
-    static importJSON(serializedNode: SerializedImageNode): ImageNode {
-        const { altText, height, width, maxWidth, caption, src, showCaption } =
-            serializedNode;
-        const node = $createImageNode({
-            altText,
-            height,
-            maxWidth,
-            showCaption,
-            src,
-            width,
-        });
-        const nestedEditor = node.__caption;
-        const editorState = nestedEditor.parseEditorState(caption.editorState);
-        if (!editorState.isEmpty()) {
-            nestedEditor.setEditorState(editorState);
-        }
-        return node;
-    }
-
-    exportDOM(): DOMExportOutput {
-        const element = document.createElement('img');
-        element.setAttribute('src', this.__src);
-        element.setAttribute('alt', this.__altText);
-        element.setAttribute('width', this.__width.toString());
-        element.setAttribute('height', this.__height.toString());
-        return { element };
-    }
-
-    static importDOM(): DOMConversionMap | null {
-        return {
-            img: (node: Node) => ({
-                conversion: convertImageElement,
-                priority: 0,
-            }),
-        };
-    }
-
-    constructor(
-        src: string,
-        altText: string,
-        maxWidth: number,
-        width?: 'inherit' | number,
-        height?: 'inherit' | number,
-        showCaption?: boolean,
-        caption?: LexicalEditor,
-        captionsEnabled?: boolean,
-        key?: NodeKey,
-    ) {
-        super(key);
-        this.__src = src;
-        this.__altText = altText;
-        this.__maxWidth = maxWidth;
-        this.__width = width || 'inherit';
-        this.__height = height || 'inherit';
-        this.__showCaption = showCaption || false;
-        this.__caption = caption || createEditor();
-        this.__captionsEnabled = captionsEnabled || captionsEnabled === undefined;
-    }
-
-    exportJSON(): SerializedImageNode {
-        return {
-            altText: this.getAltText(),
-            caption: this.__caption.toJSON(),
-            height: this.__height === 'inherit' ? 0 : this.__height,
-            maxWidth: this.__maxWidth,
-            showCaption: this.__showCaption,
-            src: this.getSrc(),
-            type: 'image',
-            version: 1,
-            width: this.__width === 'inherit' ? 0 : this.__width,
-        };
-    }
-
-    setWidthAndHeight(
-        width: 'inherit' | number,
-        height: 'inherit' | number,
-    ): void {
-        const writable = this.getWritable();
-        writable.__width = width;
-        writable.__height = height;
-    }
-
-    setShowCaption(showCaption: boolean): void {
-        const writable = this.getWritable();
-        writable.__showCaption = showCaption;
-    }
-
-    // View
-
-    createDOM(config: EditorConfig): HTMLElement {
-        const span = document.createElement('span');
-        const theme = config.theme;
-        const className = theme.image;
-        if (className !== undefined) {
-            span.className = className;
-        }
-        return span;
-    }
-
-    updateDOM(): false {
-        return false;
-    }
-
-    getSrc(): string {
-        return this.__src;
-    }
-
-    getAltText(): string {
-        return this.__altText;
-    }
-
-    decorate(): JSX.Element {
-        return (
-            <Suspense fallback={null}>
-                <ImageComponent
-                    src={this.__src}
-                    altText={this.__altText}
-                    width={this.__width}
-                    height={this.__height}
-                    maxWidth={this.__maxWidth}
-                    nodeKey={this.getKey()}
-                    showCaption={this.__showCaption}
-                    caption={this.__caption}
-                    captionsEnabled={this.__captionsEnabled}
-                    resizable={true}
-                />
-            </Suspense>
-        );
-    }
-}
 
 export function $createImageNode({
     altText,
@@ -4448,3 +4472,12 @@ export function $isPageBreakNode(
 ): node is PageBreakNode {
     return node instanceof PageBreakNode;
 }
+
+
+
+export const PlaygroundNodes: Array<Klass<LexicalNode>> = [
+    HeadingNode, ListNode, ListItemNode, QuoteNode, CodeNode, CodeHighlightNode, AutoLinkNode, LinkNode, PollNode, StickyNode,
+    ImageNode, InlineImageNode, MentionNode, EmojiNode, HorizontalRuleNode, TweetNode, YouTubeNode, FigmaNode, CollapsibleContainerNode,
+    CollapsibleContentNode, CollapsibleTitleNode, ExcalidrawNode, EquationNode, AutocompleteNode, KeywordNode, PageBreakNode,
+    LayoutContainerNode, LayoutItemNode, // MarkNode,OverflowNode,TableNode, TableCellNode, TableRowNode, HashtagNode,
+];
