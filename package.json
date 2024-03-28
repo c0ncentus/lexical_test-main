@@ -1,0 +1,54 @@
+{
+  "name": "@lexical/monorepo",
+  "description": "Lexical is an extensible text editor framework that provides excellent reliability, accessibility and performance.",
+  "version": "0.14.2",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "npm": ">=8.2.3",
+    "yarn": ">=1"
+  },
+  "engineStrict": true,
+  "scripts": {
+    "start": "",
+    "build": "node scripts/build.js",
+    "tsc": "tsc"
+  },
+  "devDependencies": {
+    "lexical": "0.14.2",
+    "react-error-boundary": "^4.0.13",
+    "@types/lodash-es": "^4.17.12",
+    "lodash-es": "^4.17.21",
+    "@excalidraw/excalidraw": "^0.17.3",
+    "@lexical/clipboard": "0.14.2",
+    "@lexical/code": "0.14.2",
+    "@lexical/file": "0.14.2",
+    "@lexical/hashtag": "0.14.2",
+    "@lexical/link": "0.14.2",
+    "@lexical/list": "0.14.2",
+    "@lexical/mark": "0.14.2",
+    "@lexical/overflow": "0.14.2",
+    "@lexical/plain-text": "0.14.2",
+    "@lexical/react": "0.14.2",
+    "@lexical/rich-text": "0.14.2",
+    "@lexical/selection": "0.14.2",
+    "@lexical/table": "0.14.2",
+    "@lexical/utils": "0.14.2",
+    "@types/node": "^20.11.30",
+    "@types/prismjs": "^1.26.3",
+    "prismjs":"1.29.0",
+    "@types/react": "^18.2.73",
+    "@types/react-dom": "^18.2.22",
+    "prettier": "^3.2.5",
+    "prettier-plugin-organize-attributes": "^1.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "5.4.3"
+  },
+  "dependencies": {
+    "@types/katex": "^0.16.7",
+    "yjs": "^13.6.14"
+  }
+}
