@@ -1,35 +1,20 @@
 import * as React from 'react';
-import {useState} from 'react';
-import {
-    joinClasses, Point, Rect, addSwipeDownListener, addSwipeLeftListener, addSwipeRightListener,
-    addSwipeUpListener, getDOMRangeRect, getSelectedNode, isHTMLElement, isPoint, sanitizeUrl, setFloatingElemPosition,
-    setFloatingElemPositionForLinkEditor, validateUrl
-} from './utils';
-import katex from 'katex';
-import type {Ref, RefObject} from 'react';
 import {ChangeEvent, forwardRef, useEffect, useRef,HTMLInputTypeAttribute, ReactNode, useMemo,useCallback, useState } from 'react';
+import type {Ref, RefObject} from 'react';
+import katex from 'katex';
 import {createPortal} from 'react-dom';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
-
 import {ContentEditable} from '@lexical/react/LexicalContentEditable';
-
-
 import {$isCodeNode} from '@lexical/code';
-import {
-  $getNearestNodeFromDOMNode,
-  $getSelection,
-  $setSelection,
-  LexicalEditor,
-} from 'lexical';
-
-import {useDebounce} from './hooks';
+import { $getNearestNodeFromDOMNode, $getSelection, $setSelection, LexicalEditor} from 'lexical';
 import {Options} from 'prettier';
 
-interface Props {
-  lang: string;
-  editor: LexicalEditor;
-  getCodeDOMNode: () => HTMLElement | null;
-}
+
+import {joinClasses} from './utils';
+import {useDebounce} from './hooks';
+import { ErrorBoundary } from 'react-error-boundary';
+
+
 
 const PRETTIER_PARSER_MODULES = {
   css: () => import('prettier/parser-postcss'),
@@ -82,23 +67,22 @@ function getPrettierOptions(lang: string): Options {
   return options;
 }
 
-export function PrettierButton({lang, editor, getCodeDOMNode}: Props) {
+export function PrettierButton({lang, editor, getCodeDOMNode}: {
+  lang: string;
+  editor: LexicalEditor;
+  getCodeDOMNode: () => HTMLElement | null;
+}) {
   const [syntaxError, setSyntaxError] = useState<string>('');
   const [tipsVisible, setTipsVisible] = useState<boolean>(false);
 
   async function handleClick(): Promise<void> {
     const codeDOMNode = getCodeDOMNode();
-
     try {
       const format = await loadPrettierFormat();
       const options = getPrettierOptions(lang);
-      options.plugins = [await loadPrettierParserByLang(lang)];
-
-      if (!codeDOMNode) {
-        return;
-      }
-
-      editor.update(() => {
+      options.plugins = [await loadPrettierParserByLang(lang)] as any;
+      if (!codeDOMNode) {return;}
+      editor.update(async () => {
         const codeNode = $getNearestNodeFromDOMNode(codeDOMNode);
 
         if ($isCodeNode(codeNode)) {
@@ -107,7 +91,7 @@ export function PrettierButton({lang, editor, getCodeDOMNode}: Props) {
           let parsed = '';
 
           try {
-            parsed = format(content, options);
+            parsed = await format(content, options);
           } catch (error: unknown) {
             setError(error);
           }
@@ -1003,9 +987,6 @@ export function KatexEquationAlterer({
       </>
     );
   }
-
-
-function clamp(value: number, min: number, max: number) {return Math.min(Math.max(value, min), max);}
 
 const Direction = { east: 1 << 0, north: 1 << 3, south: 1 << 1, west: 1 << 2,};
 

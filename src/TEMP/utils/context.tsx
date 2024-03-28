@@ -1,53 +1,46 @@
-import type {SettingName} from '../appSettings';
 
 import * as React from 'react';
-import {
-  createContext,
-  ReactNode,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState,} from 'react';
 
-import {DEFAULT_SETTINGS} from '../appSettings';
-
-
-import * as React from 'react';
-import {
-  createContext,
-  ReactNode,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
 import type {HistoryState} from '@lexical/react/LexicalHistoryPlugin';
-
 import {createEmptyHistoryState} from '@lexical/react/LexicalHistoryPlugin';
-import * as React from 'react';
-import {createContext, ReactNode, useContext, useMemo} from 'react';
 
-type ContextShape = {
-  historyState?: HistoryState;
+const DEFAULT_SETTINGS = {
+  disableBeforeInput: false,
+  emptyEditor: true,
+  isAutocomplete: false,
+  isCharLimit: false,
+  isCharLimitUtf8: false,
+  isCollab: false,
+  isMaxLength: false,
+  isRichText: true,
+  measureTypingPerf: false,
+  shouldUseLexicalContextMenu: false,
+  showNestedEditorTreeView: false,
+  showTableOfContents: false,
+  showTreeView: true,
+  tableCellBackgroundColor: true,
+  tableCellMerge: true,
 };
 
-const Context: React.Context<ContextShape> = createContext({});
+type SettingName = keyof typeof DEFAULT_SETTINGS;
 
-export const SharedHistoryContext = ({
-  children,
-}: {
-  children: ReactNode;
-}): JSX.Element => {
+const ContextHistoShared: React.Context<{
+  historyState?: HistoryState;
+}> = createContext({});
+
+export const SharedHistoryContext = ({children,}: {children: ReactNode;}): JSX.Element => {
   const historyContext = useMemo(
     () => ({historyState: createEmptyHistoryState()}),
     [],
   );
-  return <Context.Provider value={historyContext}>{children}</Context.Provider>;
+  return <ContextHistoShared.Provider value={historyContext}>{children}</ContextHistoShared.Provider>;
 };
 
-export const useSharedHistoryContext = (): ContextShape => {
-  return useContext(Context);
+export const useSharedHistoryContext = (): {
+  historyState?: HistoryState;
+} => {
+  return useContext(ContextHistoShared);
 };
 
 type Suggestion = null | string;
@@ -57,20 +50,12 @@ type PublishFn = (newSuggestion: Suggestion) => void;
 type ContextShape = [SubscribeFn, PublishFn];
 type HookShape = [suggestion: Suggestion, setSuggestion: PublishFn];
 
-const Context: React.Context<ContextShape> = createContext([
-  (_cb) => () => {
-    return;
-  },
-  (_newSuggestion: Suggestion) => {
-    return;
-  },
+const ContextSharedAutocomplete: React.Context<ContextShape> = createContext([
+  (_cb) => () => {return;},
+  (_newSuggestion: Suggestion) => {return;},
 ]);
 
-export const SharedAutocompleteContext = ({
-  children,
-}: {
-  children: ReactNode;
-}): JSX.Element => {
+export const SharedAutocompleteContext = ({children,}: {children: ReactNode;}): JSX.Element => {
   const context: ContextShape = useMemo(() => {
     let suggestion: Suggestion | null = null;
     const listeners: Set<CallbackFn> = new Set();
@@ -78,23 +63,19 @@ export const SharedAutocompleteContext = ({
       (cb: (newSuggestion: Suggestion) => void) => {
         cb(suggestion);
         listeners.add(cb);
-        return () => {
-          listeners.delete(cb);
-        };
+        return () => {listeners.delete(cb);};
       },
       (newSuggestion: Suggestion) => {
         suggestion = newSuggestion;
-        for (const listener of listeners) {
-          listener(newSuggestion);
-        }
+        for (const listener of Array.from(listeners)) {listener(newSuggestion);}
       },
     ];
   }, []);
-  return <Context.Provider value={context}>{children}</Context.Provider>;
+  return <ContextSharedAutocomplete.Provider value={context}>{children}</ContextSharedAutocomplete.Provider>;
 };
 
 export const useSharedAutocompleteContext = (): HookShape => {
-  const [subscribe, publish]: ContextShape = useContext(Context);
+  const [subscribe, publish]: ContextShape = useContext(ContextSharedAutocomplete);
   const [suggestion, setSuggestion] = useState<Suggestion>(null);
   useEffect(() => {
     return subscribe((newSuggestion: Suggestion) => {
@@ -112,7 +93,7 @@ type SettingsContextShape = {
   settings: Record<SettingName, boolean>;
 };
 
-const Context: React.Context<SettingsContextShape> = createContext({
+const ContextSettings: React.Context<SettingsContextShape> = createContext({
   setOption: (name: SettingName, value: boolean) => {
     return;
   },
@@ -142,12 +123,10 @@ export const SettingsContext = ({
     return {setOption, settings};
   }, [setOption, settings]);
 
-  return <Context.Provider value={contextValue}>{children}</Context.Provider>;
+  return <ContextSettings.Provider value={contextValue}>{children}</ContextSettings.Provider>;
 };
 
-export const useSettings = (): SettingsContextShape => {
-  return useContext(Context);
-};
+export const useSettings = (): SettingsContextShape => {return useContext(ContextSettings);};
 
 function setURLParam(param: SettingName, value: null | boolean) {
   const url = new URL(window.location.href);

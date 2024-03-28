@@ -77,7 +77,7 @@ import {
 
 
 
-export const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS = {
   disableBeforeInput: false,
   emptyEditor: true,
   isAutocomplete: false,
@@ -95,11 +95,9 @@ export const DEFAULT_SETTINGS = {
   tableCellMerge: true,
 };
 
-export type SettingName = keyof typeof DEFAULT_SETTINGS;
-
-export type Settings = typeof DEFAULT_SETTINGS;
-
-export default function Settings(): JSX.Element {
+type SettingName = keyof typeof DEFAULT_SETTINGS;
+type Settings = typeof DEFAULT_SETTINGS;
+function Settings(): JSX.Element {
   const windowLocation = window.location;
   const {
     setOption,
@@ -240,7 +238,7 @@ const skipCollaborationInit =
   // @ts-expect-error
   window.parent != null && window.parent.frames.right === window;
 
-export default function Editor(): JSX.Element {
+export function Editor(): JSX.Element {
   const { historyState } = useSharedHistoryContext();
   const {
     settings: {
@@ -311,20 +309,16 @@ export default function Editor(): JSX.Element {
         <KeywordsPlugin />
         <SpeechToTextPlugin />
         <AutoLinkPlugin />
-        <CommentPlugin
-          providerFactory={isCollab ? createWebsocketProvider : undefined}
-        />
+        <CommentPlugin/>
         {isRichText ? (
           <>
-            {isCollab ? (
-              <CollaborationPlugin
-                id="main"
-                providerFactory={createWebsocketProvider}
-                shouldBootstrap={!skipCollaborationInit}
-              />
-            ) : (
-              <HistoryPlugin externalHistoryState={historyState} />
-            )}
+            {isCollab ? <></>
+            // ( <CollaborationPlugin
+            //     id="main"
+            //     providerFactory={createWebsocketProvider}
+            //     shouldBootstrap={!skipCollaborationInit}
+            //   />)
+            : (<HistoryPlugin externalHistoryState={historyState} />)}
             <RichTextPlugin
               contentEditable={
                 <div className="editor-scroller">
@@ -505,7 +499,7 @@ function App(): JSX.Element {
     onError: (error: Error) => {
       throw error;
     },
-    theme: PlaygroundEditorTheme,
+    theme: baseTheme,
   };
 
   return (
@@ -524,7 +518,7 @@ function App(): JSX.Element {
   );
 }
 
-export default function PlaygroundApp(): JSX.Element {
+export function PlaygroundApp(): JSX.Element {
   return (
     <SettingsContext>
       <App />

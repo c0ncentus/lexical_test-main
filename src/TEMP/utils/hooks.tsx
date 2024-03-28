@@ -1,8 +1,5 @@
-import {useCallback, useMemo, useState} from 'react';
-import * as React from 'react';
-
-import Modal from '../ui/Modal';
-import {useCallback, useEffect, useRef} from 'react';
+import {useCallback, useMemo, useState,  useEffect, useRef} from 'react';
+import {Modal} from './LibLexical';
 import {debounce} from 'lodash-es';
 
 export function useModal(): [
