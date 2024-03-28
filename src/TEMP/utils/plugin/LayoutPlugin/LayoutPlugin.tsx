@@ -1,11 +1,3 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-
 import type {ElementNode, LexicalCommand, LexicalNode, NodeKey} from 'lexical';
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
@@ -28,17 +20,9 @@ import {
   KEY_ARROW_UP_COMMAND,
 } from 'lexical';
 import {useEffect} from 'react';
+import { LayoutContainerNode, LayoutItemNode, $isLayoutContainerNode, $createLayoutContainerNode, $createLayoutItemNode, $isLayoutItemNode } from '../../NODES';
 
-import {
-  $createLayoutContainerNode,
-  $isLayoutContainerNode,
-  LayoutContainerNode,
-} from '../../nodes/LayoutContainerNode';
-import {
-  $createLayoutItemNode,
-  $isLayoutItemNode,
-  LayoutItemNode,
-} from '../../nodes/LayoutItemNode';
+
 
 export const INSERT_LAYOUT_COMMAND: LexicalCommand<string> =
   createCommand<string>();

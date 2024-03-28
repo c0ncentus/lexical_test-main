@@ -9,8 +9,7 @@ import {LexicalEditor} from 'lexical';
 import * as React from 'react';
 import {useState} from 'react';
 
-import Button from '../../ui/Button';
-import DropDown, {DropDownItem} from '../../ui/DropDown';
+import {Button, DropDown, DropDownItem} from '../../LibLexical';
 import {INSERT_LAYOUT_COMMAND} from './LayoutPlugin';
 
 const LAYOUTS = [
