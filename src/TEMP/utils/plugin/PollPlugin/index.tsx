@@ -19,15 +19,10 @@ import {
 } from 'lexical';
 import {useEffect, useState} from 'react';
 import * as React from 'react';
+import { Button, DialogActions, TextInput } from '../../LibLexical';
+import { PollNode, $createPollNode, createPollOption } from '../../NODES';
 
-import {
-  $createPollNode,
-  createPollOption,
-  PollNode,
-} from '../../nodes/PollNode';
-import Button from '../../ui/Button';
-import {DialogActions} from '../../ui/Dialog';
-import TextInput from '../../ui/TextInput';
+
 
 export const INSERT_POLL_COMMAND: LexicalCommand<string> = createCommand(
   'INSERT_POLL_COMMAND',

@@ -1,11 +1,3 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {
   $createTableNodeWithDimensions,
@@ -23,12 +15,8 @@ import {
   LexicalNode,
 } from 'lexical';
 import {createContext, useContext, useEffect, useMemo, useState} from 'react';
-import * as React from 'react';
-import invariant from 'shared/invariant';
-
-import Button from '../ui/Button';
-import {DialogActions} from '../ui/Dialog';
-import TextInput from '../ui/TextInput';
+import { TextInput, DialogActions, Button } from '../LibLexical';
+import { invariant } from '../utils';
 
 export type InsertTableCommandPayload = Readonly<{
   columns: string;

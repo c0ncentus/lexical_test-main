@@ -40,13 +40,13 @@ import {
   $isRangeSelection,
   $isTextNode,
 } from 'lexical';
-import * as React from 'react';
+
 import {ReactPortal, useCallback, useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
-import invariant from 'shared/invariant';
+import { ColorPicker } from '../../LibLexical';
+import { useModal } from '../../hooks';
+import { invariant } from '../../utils';
 
-import useModal from '../../hooks/useModal';
-import ColorPicker from '../../ui/ColorPicker';
 
 function computeSelectionCount(selection: TableSelection): {
   columns: number;

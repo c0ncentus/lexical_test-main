@@ -1,14 +1,3 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import type {Position} from '../../nodes/InlineImageNode';
-
-import '../../nodes/InlineImageNode.css';
-
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {$wrapNodeInElement, mergeRegister} from '@lexical/utils';
 import {
@@ -31,21 +20,11 @@ import {
 } from 'lexical';
 import * as React from 'react';
 import {useEffect, useRef, useState} from 'react';
-import {CAN_USE_DOM} from 'shared/canUseDOM';
+import {  FileInput, TextInput, Select, DialogActions, Button } from '../../LibLexical';
+import { InlineImagePayload, InlineImageNode, $createInlineImageNode, $isInlineImageNode } from '../../NODES';
+import { CAN_USE_DOM} from '../../utils';
 
-import {
-  $createInlineImageNode,
-  $isInlineImageNode,
-  InlineImageNode,
-  InlineImagePayload,
-} from '../../nodes/InlineImageNode';
-import Button from '../../ui/Button';
-import {DialogActions} from '../../ui/Dialog';
-import FileInput from '../../ui/FileInput';
-import Select from '../../ui/Select';
-import TextInput from '../../ui/TextInput';
-
-export type InsertInlineImagePayload = Readonly<InlineImagePayload>;
+ type InsertInlineImagePayload = Readonly<InlineImagePayload>;
 
 const getDOMSelection = (targetWindow: Window | null): Selection | null =>
   CAN_USE_DOM ? (targetWindow || window).getSelection() : null;

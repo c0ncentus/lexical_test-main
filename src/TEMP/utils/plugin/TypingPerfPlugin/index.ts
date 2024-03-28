@@ -7,8 +7,7 @@
  */
 
 import {useEffect} from 'react';
-
-import useReport from '../../hooks/useReport';
+import { useReport } from '../../hooks';
 
 const validInputTypes = new Set([
   'insertText',

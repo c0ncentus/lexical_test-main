@@ -16,11 +16,9 @@ import {
   LexicalCommand,
 } from 'lexical';
 import {useEffect} from 'react';
+import { $createExcalidrawNode, ExcalidrawNode } from '../../NODES';
 
-import {
-  $createExcalidrawNode,
-  ExcalidrawNode,
-} from '../../nodes/ExcalidrawNode';
+
 
 export const INSERT_EXCALIDRAW_COMMAND: LexicalCommand<void> = createCommand(
   'INSERT_EXCALIDRAW_COMMAND',

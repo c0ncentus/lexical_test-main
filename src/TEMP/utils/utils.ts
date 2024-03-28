@@ -1,7 +1,26 @@
 import { $isAtNodeEnd } from '@lexical/selection';
 import { ElementNode, RangeSelection, TextNode } from 'lexical';
 import type { EditorThemeClasses } from 'lexical';
+import {useEffect, useLayoutEffect} from 'react';
+export const CAN_USE_DOM: boolean =
+  typeof window !== 'undefined' &&
+  typeof window.document !== 'undefined' &&
+  typeof window.document.createElement !== 'undefined';
+export function invariant( cond?: boolean, message?: string, ...args: string[]): asserts cond {
+  if (cond) {return;}
 
+  throw new Error(
+    'Internal Lexical error: invariant() is meant to be replaced at compile ' +
+      'time. There is no runtime version. Error: ' +
+      message,
+  );
+}
+
+const useLayoutEffectImpl: typeof useLayoutEffect = CAN_USE_DOM
+  ? useLayoutEffect
+  : useEffect;
+
+export default useLayoutEffectImpl;
 export const baseTheme: EditorThemeClasses = {
   blockCursor: 'PlaygroundEditorTheme__blockCursor',
   characterLimit: 'PlaygroundEditorTheme__characterLimit',

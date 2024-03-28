@@ -1,17 +1,8 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-import './index.css';
-
-import {$isCodeNode} from '@lexical/code';
-import {$getNearestNodeFromDOMNode, LexicalEditor} from 'lexical';
-import {Options} from 'prettier';
+import { $isCodeNode } from '@lexical/code';
+import { $getNearestNodeFromDOMNode, LexicalEditor } from 'lexical';
+import { Options } from 'prettier';
 import * as React from 'react';
-import {useState} from 'react';
+import { useState } from 'react';
 
 interface Props {
   lang: string;
@@ -34,7 +25,7 @@ async function loadPrettierParserByLang(lang: string) {
 }
 
 async function loadPrettierFormat() {
-  const {format} = await import('prettier/standalone');
+  const { format } = await import('prettier/standalone');
   return format;
 }
 
@@ -70,7 +61,7 @@ function getPrettierOptions(lang: string): Options {
   return options;
 }
 
-export function PrettierButton({lang, editor, getCodeDOMNode}: Props) {
+export function PrettierButton({ lang, editor, getCodeDOMNode }: Props) {
   const [syntaxError, setSyntaxError] = useState<string>('');
   const [tipsVisible, setTipsVisible] = useState<boolean>(false);
 
@@ -80,13 +71,13 @@ export function PrettierButton({lang, editor, getCodeDOMNode}: Props) {
     try {
       const format = await loadPrettierFormat();
       const options = getPrettierOptions(lang);
-      options.plugins = [await loadPrettierParserByLang(lang)];
+      options.plugins = [await loadPrettierParserByLang(lang)] as any;
 
       if (!codeDOMNode) {
         return;
       }
 
-      editor.update(() => {
+      editor.update(async () => {
         const codeNode = $getNearestNodeFromDOMNode(codeDOMNode);
 
         if ($isCodeNode(codeNode)) {
@@ -95,7 +86,7 @@ export function PrettierButton({lang, editor, getCodeDOMNode}: Props) {
           let parsed = '';
 
           try {
-            parsed = format(content, options);
+            parsed = await format(content, options);
           } catch (error: unknown) {
             setError(error);
           }

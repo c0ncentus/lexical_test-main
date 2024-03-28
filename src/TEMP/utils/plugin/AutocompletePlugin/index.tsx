@@ -23,13 +23,11 @@ import {
   KEY_TAB_COMMAND,
 } from 'lexical';
 import {useCallback, useEffect} from 'react';
+import { useSharedAutocompleteContext } from '../../context';
+import { $createAutocompleteNode, AutocompleteNode } from '../../NODES';
+import { addSwipeRightListener } from '../../utils';
 
-import {useSharedAutocompleteContext} from '../../context/SharedAutocompleteContext';
-import {
-  $createAutocompleteNode,
-  AutocompleteNode,
-} from '../../nodes/AutocompleteNode';
-import {addSwipeRightListener} from '../../utils/swipe';
+
 
 type SearchPromise = {
   dismiss: () => void;

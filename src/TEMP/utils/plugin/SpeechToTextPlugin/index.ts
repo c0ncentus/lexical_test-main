@@ -18,8 +18,7 @@ import {
   UNDO_COMMAND,
 } from 'lexical';
 import {useEffect, useRef, useState} from 'react';
-
-import useReport from '../../hooks/useReport';
+import { useReport } from '../../hooks';
 
 export const SPEECH_TO_TEXT_COMMAND: LexicalCommand<boolean> = createCommand(
   'SPEECH_TO_TEXT_COMMAND',

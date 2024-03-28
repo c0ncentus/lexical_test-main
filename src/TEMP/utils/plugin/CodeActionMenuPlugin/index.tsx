@@ -1,12 +1,3 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
-
-import './index.css';
 
 import {
   $isCodeNode,
@@ -111,7 +102,7 @@ function CodeActionMenuContainer({
 
   editor.registerMutationListener(CodeNode, (mutations) => {
     editor.getEditorState().read(() => {
-      for (const [key, type] of mutations) {
+      for (const [key, type] of Array.from(mutations)) {
         switch (type) {
           case 'created':
             codeSetRef.current.add(key);

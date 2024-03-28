@@ -1,10 +1,4 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
+import EMOGI from "../../emoji-list"
 
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {
@@ -93,9 +87,7 @@ export default function EmojiPickerPlugin() {
   const [queryString, setQueryString] = useState<string | null>(null);
   const [emojis, setEmojis] = useState<Array<Emoji>>([]);
 
-  useEffect(() => {
-    import('../../utils/emoji-list').then((file) => setEmojis(file.default));
-  }, []);
+  useEffect(() => {setEmojis(EMOGI);}, []);
 
   const emojiOptions = useMemo(
     () =>

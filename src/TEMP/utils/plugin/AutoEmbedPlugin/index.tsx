@@ -1,10 +1,4 @@
-/**
- * Copyright (c) Meta Platforms, Inc. and affiliates.
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
- */
+
 
 import type {LexicalEditor} from 'lexical';
 
@@ -20,12 +14,11 @@ import {useMemo, useState} from 'react';
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
 
-import useModal from '../../hooks/useModal';
-import Button from '../../ui/Button';
-import {DialogActions} from '../../ui/Dialog';
 import {INSERT_FIGMA_COMMAND} from '../FigmaPlugin';
 import {INSERT_TWEET_COMMAND} from '../TwitterPlugin';
 import {INSERT_YOUTUBE_COMMAND} from '../YouTubePlugin';
+import { Button, DialogActions } from '../../LibLexical';
+import { useModal } from '../../hooks';
 
 interface PlaygroundEmbedConfig extends EmbedConfig {
   // Human readable name of the embeded content e.g. Tweet or Google Map.
@@ -278,7 +271,7 @@ export function AutoEmbedDialog({
         />
       </div>
       <DialogActions>
-        <Button
+        <Button 
           disabled={!embedResult}
           onClick={onClick}
           data-test-id={`${embedConfig.type}-embed-modal-submit-btn`}>

@@ -21,31 +21,51 @@ import useLexicalEditable from '@lexical/react/useLexicalEditable';
 import { useEffect, useState, useMemo } from "react";
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { useSharedHistoryContext, useSettings, SettingsContext, SharedAutocompleteContext, SharedHistoryContext } from './utils/context';
-
-import {
-  $createCollapsibleContainerNode, $createCollapsibleContentNode, $createCollapsibleTitleNode, $isCollapsibleContainerNode,
-  $isCollapsibleContentNode, $isCollapsibleTitleNode, AutoEmbedDialog, CellContext, CellContextShape, CellEditorConfig, CodeActionMenuPlugin
-  , CollapsibleContainerNode, CollapsibleContentNode, CollapsibleTitleNode, ContextMenuOption, EmbedConfigs, FigmaEmbedConfig,
-  INSERT_COLLAPSIBLE_COMMAND, DragDropPaste, INSERT_EQUATION_COMMAND, INSERT_EXCALIDRAW_COMMAND, INSERT_FIGMA_COMMAND, INSERT_IMAGE_COMMAND,
-  INSERT_INLINE_COMMAND, INSERT_LAYOUT_COMMAND, INSERT_NEW_TABLE_COMMAND, INSERT_PAGE_BREAK, INSERT_POLL_COMMAND, INSERT_TWEET_COMMAND, InsertEquationDialog,
-  InsertImageDialog, InsertImagePayload, InsertImageUploadedDialogBody, InsertImageUriDialogBody, InsertLayoutDialog, InsertPollDialog, InsertTableCommandPayload,
-  InsertTableDialog, SPEECH_TO_TEXT_COMMAND, SUPPORT_SPEECH_RECOGNITION, TOGGLE_COLLAPSIBLE_COMMAND, TableContext, TwitterEmbedConfig, UPDATE_LAYOUT_COMMAND,
-  YoutubeEmbedConfig, convertCollapsibleContentElement, convertDetailsElement, convertSummaryElement, isSelectAll, uuid,
-
-
-  LexicalAutoLinkPlugin, ListMaxIndentLevelPlugin, TableActionMenuPlugin, TableOfContentsPlugin, TestRecorderPlugin, TableCellResizerPlugin,
-  AutocompletePlugin, CodeHighlightPlugin, ComponentPickerMenuPlugin, DraggableBlockPlugin, FloatingLinkEditorPlugin, FloatingTextFormatToolbarPlugin,
-  FontSize,
-  ActionsPlugin, PasteLogPlugin, DocsPlugin, PollPlugin, LinkPlugin, FigmaPlugin, TablePlugin, EmojisPlugin,
-  LayoutPlugin, StickyPlugin, CommentPlugin, ToolbarPlugin, TwitterPlugin, KeywordsPlugin, MarkdownPlugin, TabFocusPlugin,
-  TreeViewPlugin, PageBreakPlugin, AutoEmbedPlugin, EquationsPlugin, MaxLengthPlugin, TypingPerfPlugin, ExcalidrawPlugin,
-  EmojiPickerPlugin, CollapsiblePlugin, ContextMenuPlugin, InlineImagePlugin, NewMentionsPlugin,
-} from './utils/PLUGIN';
-
 import { PlaygroundNodes } from "./utils/NODES"
 
 import { Placeholder, Switch } from './utils/LibLexical';
 import { baseTheme } from './utils/utils';
+import { LinkPlugin } from '@lexical/react/LexicalLinkPlugin';
+import ActionsPlugin from './utils/plugin/ActionsPlugin';
+import AutoEmbedPlugin from './utils/plugin/AutoEmbedPlugin';
+import AutocompletePlugin from './utils/plugin/AutocompletePlugin';
+import CodeActionMenuPlugin from './utils/plugin/CodeActionMenuPlugin';
+import CodeHighlightPlugin from './utils/plugin/CodeHighlightPlugin';
+import CollapsiblePlugin from './utils/plugin/CollapsiblePlugin';
+import CommentPlugin from './utils/plugin/CommentPlugin';
+import ContextMenuPlugin from './utils/plugin/ContextMenuPlugin';
+import DocsPlugin from './utils/plugin/DocsPlugin';
+import DragDropPaste from './utils/plugin/DragDropPastePlugin';
+import DraggableBlockPlugin from './utils/plugin/DraggableBlockPlugin';
+import EmojiPickerPlugin from './utils/plugin/EmojiPickerPlugin';
+import EmojisPlugin from './utils/plugin/EmojisPlugin';
+import EquationsPlugin from './utils/plugin/EquationsPlugin';
+import ExcalidrawPlugin from './utils/plugin/ExcalidrawPlugin';
+import FigmaPlugin from './utils/plugin/FigmaPlugin';
+import FloatingLinkEditorPlugin from './utils/plugin/FloatingLinkEditorPlugin';
+import FloatingTextFormatToolbarPlugin from './utils/plugin/FloatingTextFormatToolbarPlugin';
+import InlineImagePlugin from './utils/plugin/InlineImagePlugin';
+import KeywordsPlugin from './utils/plugin/KeywordsPlugin';
+import { LayoutPlugin } from './utils/plugin/LayoutPlugin/LayoutPlugin';
+import ListMaxIndentLevelPlugin from './utils/plugin/ListMaxIndentLevelPlugin';
+import { MaxLengthPlugin } from './utils/plugin/MaxLengthPlugin';
+import PageBreakPlugin from './utils/plugin/PageBreakPlugin';
+import PasteLogPlugin from './utils/plugin/PasteLogPlugin';
+import PollPlugin from './utils/plugin/PollPlugin';
+import TabFocusPlugin from './utils/plugin/TabFocusPlugin';
+import TableOfContentsPlugin from './utils/plugin/TableOfContentsPlugin';
+import { TablePlugin, TableContext } from './utils/plugin/TablePlugin';
+import ToolbarPlugin from './utils/plugin/ToolbarPlugin';
+import TreeViewPlugin from './utils/plugin/TreeViewPlugin';
+import TwitterPlugin from './utils/plugin/TwitterPlugin';
+import ImagesPlugin from './utils/plugin/ImagesPlugin';
+import { MarkdownShortcutPlugin } from '@lexical/react/LexicalMarkdownShortcutPlugin';
+import TableCellResizer from './utils/plugin/TableCellResizer';
+import YouTubePlugin from './utils/plugin/YouTubePlugin';
+import { AutoLinkPlugin } from '@lexical/react/LexicalAutoLinkPlugin';
+import ComponentPickerPlugin from './utils/plugin/ComponentPickerPlugin';
+import MentionsPlugin from './utils/plugin/MentionsPlugin';
+import SpeechToTextPlugin from './utils/plugin/SpeechToTextPlugin';
 
 
 
@@ -226,6 +246,10 @@ export function Editor(): JSX.Element {
       shouldUseLexicalContextMenu,
       tableCellMerge,
       tableCellBackgroundColor,
+      disableBeforeInput,
+      emptyEditor,
+      measureTypingPerf,
+      showNestedEditorTreeView
     },
   } = useSettings();
   const isEditable = useLexicalEditable();
@@ -272,16 +296,16 @@ export function Editor(): JSX.Element {
         <DragDropPaste />
         <AutoFocusPlugin />
         <ClearEditorPlugin />
-        {/* <ComponentPickerPlugin /> */}
+        <ComponentPickerPlugin />
         <EmojiPickerPlugin />
         <AutoEmbedPlugin />
 
-        {/* <MentionsPlugin /> */}
+        <MentionsPlugin />
         <EmojisPlugin />
         <HashtagPlugin />
         <KeywordsPlugin />
-        {/* <SpeechToTextPlugin /> */}
-        {/* <AutoLinkPlugin /> */}
+        <SpeechToTextPlugin />
+        <AutoLinkPlugin matchers={[]} />
         <CommentPlugin />
         {isRichText ? (
           <>
@@ -303,22 +327,22 @@ export function Editor(): JSX.Element {
               placeholder={placeholder}
               ErrorBoundary={LexicalErrorBoundary}
             />
-            {/* <MarkdownShortcutPlugin /> */}
+            <MarkdownShortcutPlugin />
             <CodeHighlightPlugin />
             <ListPlugin />
             <CheckListPlugin />
             <ListMaxIndentLevelPlugin maxDepth={7} />
-            <TablePlugin
+            {/* <TablePlugin
               hasCellMerge={tableCellMerge}
               hasCellBackgroundColor={tableCellBackgroundColor}
-            />
-            {/* <TableCellResizer /> */}
-            {/* <ImagesPlugin /> */}
+            /> */}
+            <TableCellResizer />
+            <ImagesPlugin />
             <InlineImagePlugin />
             <LinkPlugin />
             <PollPlugin />
             <TwitterPlugin />
-            {/* <YouTubePlugin /> */}
+            <YouTubePlugin />
             <FigmaPlugin />
             {!isEditable && <LexicalClickableLinkPlugin />}
             <HorizontalRulePlugin />

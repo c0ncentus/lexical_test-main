@@ -11,9 +11,8 @@ import type {BaseSelection, LexicalEditor} from 'lexical';
 import {useLexicalComposerContext} from '@lexical/react/LexicalComposerContext';
 import {$createParagraphNode, $createTextNode, $getRoot} from 'lexical';
 import * as React from 'react';
-import {useCallback, useEffect, useRef, useState} from 'react';
-import {IS_APPLE} from 'shared/environment';
-import useLayoutEffect from 'shared/useLayoutEffect';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
+
 
 const copy = (text: string | null) => {
   const textArea = document.createElement('textarea');
@@ -95,7 +94,7 @@ const formatStep = (step: Step) => {
 };
 
 export function isSelectAll(event: KeyboardEvent): boolean {
-  return event.keyCode === 65 && (IS_APPLE ? event.metaKey : event.ctrlKey);
+  return event.keyCode === 65 && (false ? event.metaKey : event.ctrlKey);
 }
 
 // stolen from LexicalSelection-test
