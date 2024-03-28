@@ -3,7 +3,6 @@ import {$createListItemNode, $createListNode} from '@lexical/list';
 import {LexicalComposer} from '@lexical/react/LexicalComposer';
 import {$createHeadingNode, $createQuoteNode} from '@lexical/rich-text';
 import {$createParagraphNode, $createTextNode, $getRoot} from 'lexical';
-import * as React from 'react';
 
 
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
@@ -21,8 +20,8 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import useLexicalEditable from '@lexical/react/useLexicalEditable';
-import * as React from 'react';
-import { useEffect, useState, useMemo } from 'react';
+
+import { useEffect, useState, useMemo } from "react";
 
 import { useSharedHistoryContext, useSettings, SettingsContext, SharedAutocompleteContext, SharedHistoryContext,
 useSharedAutocompleteContext
