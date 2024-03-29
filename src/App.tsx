@@ -2,7 +2,7 @@ import { $createLinkNode } from '@lexical/link';
 import { $createListItemNode, $createListNode } from '@lexical/list';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { $createHeadingNode, $createQuoteNode } from '@lexical/rich-text';
-import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical';
+import { $createParagraphNode, $createTextNode, $getRoot, EditorState } from 'lexical';
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin';
 import { CharacterLimitPlugin } from '@lexical/react/LexicalCharacterLimitPlugin';
 import { CheckListPlugin } from '@lexical/react/LexicalCheckListPlugin';
@@ -18,7 +18,7 @@ import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { TabIndentationPlugin } from '@lexical/react/LexicalTabIndentationPlugin';
 import useLexicalEditable from '@lexical/react/useLexicalEditable';
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { useSharedHistoryContext, useSettings, SettingsContext, SharedAutocompleteContext, SharedHistoryContext } from './utils/context';
 import { PlaygroundNodes } from "./utils/NODES"
@@ -54,7 +54,8 @@ import PasteLogPlugin from './utils/plugin/PasteLogPlugin';
 import PollPlugin from './utils/plugin/PollPlugin';
 import TabFocusPlugin from './utils/plugin/TabFocusPlugin';
 import TableOfContentsPlugin from './utils/plugin/TableOfContentsPlugin';
-import { TablePlugin, TableContext } from './utils/plugin/TablePlugin';
+import { TablePlugin } from '@lexical/react/LexicalTablePlugin';
+import { TableContext } from './utils/plugin/TablePlugin';
 import ToolbarPlugin from './utils/plugin/ToolbarPlugin';
 import TreeViewPlugin from './utils/plugin/TreeViewPlugin';
 import TwitterPlugin from './utils/plugin/TwitterPlugin';
@@ -66,9 +67,44 @@ import { AutoLinkPlugin } from '@lexical/react/LexicalAutoLinkPlugin';
 import ComponentPickerPlugin from './utils/plugin/ComponentPickerPlugin';
 import MentionsPlugin from './utils/plugin/MentionsPlugin';
 import SpeechToTextPlugin from './utils/plugin/SpeechToTextPlugin';
+import { useDebouncedCallback } from '@react-hookz/web';
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 
 
+function useDebouncedLexicalOnChange<T>(
+  getEditorState: (editorState: EditorState) => T,
+  callback: (value: T) => void,
+  delay: number
+) {
+  const lastPayloadRef = useRef<T | null>(null);
+  const callbackRef = useRef<(arg: T) => void | null>(callback);
+  useEffect(() => {
+    callbackRef.current = callback;
+  }, [callback]);
+  const callCallbackWithLastPayload = useCallback(() => {
+    if (lastPayloadRef.current) {
+      callbackRef.current?.(lastPayloadRef.current);
+    }
+  }, []);
+  const call = useDebouncedCallback(callCallbackWithLastPayload, [lastPayloadRef.current], delay);
+  const onChange = useCallback(
+    (editorState: any) => {
+      editorState.read(() => {
+        lastPayloadRef.current = getEditorState(editorState);
+        call();
+      });
+    },
+    [call, getEditorState]
+  );
+  return onChange;
+}
 
+// ...
+
+const getEditorState = (editorState: EditorState) => ({
+  text: $getRoot().getTextContent(),
+  stateJson: JSON.stringify(editorState)
+});
 
 
 
@@ -91,35 +127,10 @@ const DEFAULT_SETTINGS = {
   tableCellMerge: true,
 };
 
-type SettingName = keyof typeof DEFAULT_SETTINGS;
 type Settings = typeof DEFAULT_SETTINGS;
 function Settings(): JSX.Element {
-  const windowLocation = window.location;
-  const {
-    setOption,
-    settings: {
-      measureTypingPerf,
-      isCollab,
-      isRichText,
-      isMaxLength,
-      isCharLimit,
-      isCharLimitUtf8,
-      isAutocomplete,
-      showTreeView,
-      showNestedEditorTreeView,
-      disableBeforeInput,
-      showTableOfContents,
-      shouldUseLexicalContextMenu,
-    },
-  } = useSettings();
+  const { setOption, settings: { showTreeView, showNestedEditorTreeView }, } = useSettings();
   const [showSettings, setShowSettings] = useState(false);
-  const [isSplitScreen, search] = useMemo(() => {
-    const parentWindow = window.parent;
-    const _search = windowLocation.search;
-    const _isSplitScreen =
-      parentWindow && parentWindow.location.pathname === '/split/';
-    return [_isSplitScreen, _search];
-  }, [windowLocation]);
 
   return (
     <>
@@ -130,95 +141,15 @@ function Settings(): JSX.Element {
       />
       {showSettings ? (
         <div className="switches">
-          {isRichText && (
-            <Switch
-              onClick={() => {
-                setOption('isCollab', !isCollab);
-                window.location.reload();
-              }}
-              checked={isCollab}
-              text="Collaboration"
-            />
-          )}
-
-          <Switch
-            onClick={() => {
-              if (isSplitScreen) {window.parent.location.href = `/${search}`;} 
-              else {window.location.href = `/split/${search}`;}
-            }}
-            checked={isSplitScreen}
-            text="Split Screen"
-          />
-
-          <Switch
-            onClick={() => setOption('measureTypingPerf', !measureTypingPerf)}
-            checked={measureTypingPerf}
-            text="Measure Perf"
-          />
           <Switch
             onClick={() => setOption('showTreeView', !showTreeView)}
             checked={showTreeView}
             text="Debug View"
           />
           <Switch
-            onClick={() =>
-              setOption('showNestedEditorTreeView', !showNestedEditorTreeView)
-            }
+            onClick={() => setOption('showNestedEditorTreeView', !showNestedEditorTreeView)}
             checked={showNestedEditorTreeView}
             text="Nested Editors Debug View"
-          />
-          <Switch
-            onClick={() => {
-              setOption('isRichText', !isRichText);
-              setOption('isCollab', false);
-            }}
-            checked={isRichText}
-            text="Rich Text"
-          />
-          <Switch
-            onClick={() => setOption('isCharLimit', !isCharLimit)}
-            checked={isCharLimit}
-            text="Char Limit"
-          />
-          <Switch
-            onClick={() => setOption('isCharLimitUtf8', !isCharLimitUtf8)}
-            checked={isCharLimitUtf8}
-            text="Char Limit (UTF-8)"
-          />
-          <Switch
-            onClick={() => setOption('isMaxLength', !isMaxLength)}
-            checked={isMaxLength}
-            text="Max Length"
-          />
-          <Switch
-            onClick={() => setOption('isAutocomplete', !isAutocomplete)}
-            checked={isAutocomplete}
-            text="Autocomplete"
-          />
-          <Switch
-            onClick={() => {
-              setOption('disableBeforeInput', !disableBeforeInput);
-              setTimeout(() => window.location.reload(), 500);
-            }}
-            checked={disableBeforeInput}
-            text="Legacy Events"
-          />
-          <Switch
-            onClick={() => {
-              setOption('showTableOfContents', !showTableOfContents);
-            }}
-            checked={showTableOfContents}
-            text="Table Of Contents"
-          />
-          <Switch
-            onClick={() => {
-              setOption(
-                'shouldUseLexicalContextMenu',
-                !shouldUseLexicalContextMenu,
-              );
-            }}
-            checked={shouldUseLexicalContextMenu}
-            text="Use Lexical Context Menu"
           />
         </div>
       ) : null}
@@ -226,51 +157,23 @@ function Settings(): JSX.Element {
   );
 }
 
-
-const skipCollaborationInit =
-  // @ts-expect-error
-  window.parent != null && window.parent.frames.right === window;
-
-export function Editor(): JSX.Element {
+export function Editor({ onChange_ }: { onChange_: (data: any) => void }): JSX.Element {
   const { historyState } = useSharedHistoryContext();
   const {
-    settings: {
-      isCollab,
-      isAutocomplete,
-      isMaxLength,
-      isCharLimit,
-      isCharLimitUtf8,
-      isRichText,
-      showTreeView,
-      showTableOfContents,
-      shouldUseLexicalContextMenu,
-      tableCellMerge,
-      tableCellBackgroundColor,
-      disableBeforeInput,
-      emptyEditor,
-      measureTypingPerf,
-      showNestedEditorTreeView
-    },
+    settings: { isRichText, showTreeView, tableCellMerge, tableCellBackgroundColor, showNestedEditorTreeView},
   } = useSettings();
   const isEditable = useLexicalEditable();
-  const text = isCollab
-    ? 'Enter some collaborative rich text...'
-    : isRichText
+  const text = isRichText
       ? 'Enter some rich text...'
       : 'Enter some plain text...';
   const placeholder = <Placeholder>{text}</Placeholder>;
-  const [floatingAnchorElem, setFloatingAnchorElem] =
-    useState<HTMLDivElement | null>(null);
-  const [isSmallWidthViewport, setIsSmallWidthViewport] =
-    useState<boolean>(false);
+  const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
+  const [isSmallWidthViewport, setIsSmallWidthViewport] = useState<boolean>(false);
   const [isLinkEditMode, setIsLinkEditMode] = useState<boolean>(false);
 
-  const onRef = (_floatingAnchorElem: HTMLDivElement) => {
-    if (_floatingAnchorElem !== null) {
-      setFloatingAnchorElem(_floatingAnchorElem);
-    }
-  };
-
+  const onRef = (_floatingAnchorElem: HTMLDivElement) => { if (_floatingAnchorElem !== null) { setFloatingAnchorElem(_floatingAnchorElem); } };
+  const debouncedOnChange = useCallback((value: any) => { onChange_(value) }, []);
+  const onChange = useDebouncedLexicalOnChange(getEditorState, debouncedOnChange, 1000);
   useEffect(() => {
     const updateViewPortWidth = () => {
       const isNextSmallWidthViewport = false
@@ -285,115 +188,67 @@ export function Editor(): JSX.Element {
       window.removeEventListener('resize', updateViewPortWidth);
     };
   }, [isSmallWidthViewport]);
+  const [CHAR_LIMIT, setLimitChar] = useState(2048);
 
-  return (
-    <>
-      {isRichText && <ToolbarPlugin setIsLinkEditMode={setIsLinkEditMode} />}
-      <div
-        className={`editor-container ${showTreeView ? 'tree-view' : ''} ${!isRichText ? 'plain-text' : ''
-          }`}>
-        {isMaxLength && <MaxLengthPlugin maxLength={30} />}
-        <DragDropPaste />
-        <AutoFocusPlugin />
-        <ClearEditorPlugin />
-        <ComponentPickerPlugin />
-        <EmojiPickerPlugin />
-        <AutoEmbedPlugin />
-
-        <MentionsPlugin />
-        <EmojisPlugin />
-        <HashtagPlugin />
-        <KeywordsPlugin />
-        <SpeechToTextPlugin />
-        <AutoLinkPlugin matchers={[]} />
-        <CommentPlugin />
-        {isRichText ? (
-          <>
-            {isCollab ? <></>
-              // ( <CollaborationPlugin
-              //     id="main"
-              //     providerFactory={createWebsocketProvider}
-              //     shouldBootstrap={!skipCollaborationInit}
-              //   />)
-              : (<HistoryPlugin externalHistoryState={historyState} />)}
-            <RichTextPlugin
-              contentEditable={
-                <div className="editor-scroller">
-                  <div className="editor" ref={onRef}>
-                    <ContentEditable />
-                  </div>
-                </div>
-              }
-              placeholder={placeholder}
-              ErrorBoundary={LexicalErrorBoundary}
-            />
-            <MarkdownShortcutPlugin />
-            <CodeHighlightPlugin />
-            <ListPlugin />
-            <CheckListPlugin />
-            <ListMaxIndentLevelPlugin maxDepth={7} />
-            {/* <TablePlugin
-              hasCellMerge={tableCellMerge}
-              hasCellBackgroundColor={tableCellBackgroundColor}
-            /> */}
-            <TableCellResizer />
-            <ImagesPlugin />
-            <InlineImagePlugin />
-            <LinkPlugin />
-            <PollPlugin />
-            <TwitterPlugin />
-            <YouTubePlugin />
-            <FigmaPlugin />
-            {!isEditable && <LexicalClickableLinkPlugin />}
-            <HorizontalRulePlugin />
-            <EquationsPlugin />
-            <ExcalidrawPlugin />
-            <TabFocusPlugin />
-            <TabIndentationPlugin />
-            <CollapsiblePlugin />
-            <PageBreakPlugin />
-            <LayoutPlugin />
-            {floatingAnchorElem && !isSmallWidthViewport && (
-              <>
-                <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
-                <CodeActionMenuPlugin anchorElem={floatingAnchorElem} />
-                <FloatingLinkEditorPlugin
-                  anchorElem={floatingAnchorElem}
-                  isLinkEditMode={isLinkEditMode}
-                  setIsLinkEditMode={setIsLinkEditMode}
-                />
-                {/* <TableCellActionMenuPlugin
-                  anchorElem={floatingAnchorElem}
-                  cellMerge={true}
-                /> */}
-                <FloatingTextFormatToolbarPlugin
-                  anchorElem={floatingAnchorElem}
-                />
-              </>
-            )}
-          </>
-        ) : (
-          <>
+  {/* <>
             <PlainTextPlugin
               contentEditable={<ContentEditable />}
               placeholder={placeholder}
               ErrorBoundary={LexicalErrorBoundary}
             />
-            <HistoryPlugin externalHistoryState={historyState} />
-          </>
-        )}
-        {(isCharLimit || isCharLimitUtf8) && (
-          <CharacterLimitPlugin
-            charset={isCharLimit ? 'UTF-16' : 'UTF-8'}
-            maxLength={5}
+          </> */};
+
+  return (
+    <>
+      <ToolbarPlugin setIsLinkEditMode={setIsLinkEditMode} />
+      <div className={`editor-container ${showTreeView ? 'tree-view' : ''} ${!isRichText ? 'plain-text' : ''}`}>
+        <DragDropPaste /> <AutoFocusPlugin /> <ClearEditorPlugin /> <ComponentPickerPlugin /> <EmojiPickerPlugin />
+        <AutoEmbedPlugin /> <MentionsPlugin /> <EmojisPlugin /> <HashtagPlugin /> <KeywordsPlugin /><CommentPlugin />
+        <SpeechToTextPlugin /> <AutoLinkPlugin matchers={[]} />
+        <>
+          <HistoryPlugin externalHistoryState={historyState} />
+          <RichTextPlugin
+            contentEditable={
+              <div className="editor-scroller">
+                <div className="editor" ref={onRef}>
+                  <ContentEditable />
+                </div>
+              </div>
+            }
+            placeholder={placeholder}
+            ErrorBoundary={LexicalErrorBoundary}
           />
-        )}
-        {isAutocomplete && <AutocompletePlugin />}
-        <div>{showTableOfContents && <TableOfContentsPlugin />}</div>
-        {shouldUseLexicalContextMenu && <ContextMenuPlugin />}
-        <ActionsPlugin isRichText={isRichText} />
+          <MarkdownShortcutPlugin /> <CodeHighlightPlugin /> <ListPlugin /> <CheckListPlugin /> 
+          <ListMaxIndentLevelPlugin maxDepth={7} />
+          <TablePlugin
+            hasCellMerge={tableCellMerge}
+            hasCellBackgroundColor={tableCellBackgroundColor}
+          />
+          <TableCellResizer /> <ImagesPlugin /> <InlineImagePlugin /> <LinkPlugin /> <PollPlugin /> <TwitterPlugin />
+          <YouTubePlugin /> <FigmaPlugin />
+          {!isEditable && <LexicalClickableLinkPlugin />} <HorizontalRulePlugin />
+          <EquationsPlugin /> <ExcalidrawPlugin /> <TabFocusPlugin /> <TabIndentationPlugin /> <CollapsiblePlugin />
+           <PageBreakPlugin /><LayoutPlugin />
+          {floatingAnchorElem && !isSmallWidthViewport && (
+            <>
+              <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
+              <CodeActionMenuPlugin anchorElem={floatingAnchorElem} />
+              <FloatingLinkEditorPlugin
+                anchorElem={floatingAnchorElem}
+                isLinkEditMode={isLinkEditMode}
+                setIsLinkEditMode={setIsLinkEditMode}
+              />
+              <FloatingTextFormatToolbarPlugin anchorElem={floatingAnchorElem} />
+            </>
+          )}
+        </>
+        <CharacterLimitPlugin charset={'UTF-16'} maxLength={CHAR_LIMIT} />
+        <MaxLengthPlugin maxLength={CHAR_LIMIT} /> <AutocompletePlugin /> <TableOfContentsPlugin /> <ContextMenuPlugin />
+         <ActionsPlugin isRichText={isRichText} />
       </div>
-      {showTreeView && <TreeViewPlugin />}
+      <OnChangePlugin onChange={onChange} />
+      {/* {showTreeView && <TreeViewPlugin />} */}
+      <input value={CHAR_LIMIT} onChange={(e) => setLimitChar(parseInt(e.currentTarget.value, 10))} />
     </>
   );
 }
@@ -480,22 +335,14 @@ function prepopulatedRichText() {
   }
 }
 
-function App(): JSX.Element {
-  const {
-    settings: { isCollab, emptyEditor, measureTypingPerf },
-  } = useSettings();
+function App({ onChange, initLexicalData }: { onChange: (data: any) => void, initLexicalData: any }): JSX.Element {
+  const { settings: { isCollab, emptyEditor, measureTypingPerf }, } = useSettings();
 
   const initialConfig = {
-    editorState: isCollab
-      ? null
-      : emptyEditor
-        ? undefined
-        : prepopulatedRichText,
+    editorState: isCollab ? null : initLexicalData,
     namespace: 'Playground',
     nodes: [...PlaygroundNodes],
-    onError: (error: Error) => {
-      throw error;
-    },
+    onError: (error: Error) => { throw error; },
     theme: baseTheme,
   };
 
@@ -504,7 +351,7 @@ function App(): JSX.Element {
       <SharedHistoryContext>
         <TableContext>
           <SharedAutocompleteContext>
-            <div className="editor-shell"><Editor /></div>
+            <div className="editor-shell"><Editor onChange_={onChange} /></div>
             <Settings />
             <DocsPlugin />
             <PasteLogPlugin />
@@ -515,44 +362,10 @@ function App(): JSX.Element {
   );
 }
 
-export function PlaygroundApp(): JSX.Element {
+export function PlaygroundApp({ initLexicalData, onChange }: { initLexicalData?: any, onChange: (data: any) => void }): JSX.Element {
   return (
     <SettingsContext>
-      <App />
-      <a
-        href="https://github.com/facebook/lexical/tree/main/packages/lexical-playground"
-        className="github-corner"
-        aria-label="View source on GitHub">
-        <svg
-          width="80"
-          height="80"
-          viewBox="0 0 250 250"
-          style={{
-            border: '0',
-            color: '#eee',
-            fill: '#222',
-            left: '0',
-            position: 'absolute',
-            top: '0',
-            transform: 'scale(-1,1)',
-          }}
-          aria-hidden="true">
-          <path d="M0,0 L115,115 L130,115 L142,142 L250,250 L250,0 Z" />
-          <path
-            d="M128.3,109.0 C113.8,99.7 119.0,89.6 119.0,89.6 C122.0,82.7 120.5,78.6 120.5,78.6 C119.2,72.0 123.4,76.3 123.4,76.3 C127.3,80.9 125.5,87.3 125.5,87.3 C122.9,97.6 130.6,101.9 134.4,103.2"
-            fill="currentColor"
-            style={{
-              transformOrigin: '130px 106px',
-            }}
-            className="octo-arm"
-          />
-          <path
-            d="M115.0,115.0 C114.9,115.1 118.7,116.5 119.8,115.4 L133.7,101.6 C136.9,99.2 139.9,98.4 142.2,98.6 C133.8,88.0 127.5,74.4 143.8,58.0 C148.5,53.4 154.0,51.2 159.7,51.0 C160.3,49.4 163.2,43.6 171.4,40.1 C171.4,40.1 176.1,42.5 178.8,56.2 C183.1,58.6 187.2,61.8 190.9,65.4 C194.5,69.0 197.7,73.2 200.1,77.6 C213.8,80.2 216.3,84.9 216.3,84.9 C212.7,93.1 206.9,96.0 205.4,96.6 C205.1,102.4 203.0,107.8 198.3,112.5 C181.9,128.9 168.3,122.5 157.7,114.1 C157.9,116.9 156.7,120.9 152.7,124.9 L141.0,136.5 C139.8,137.7 141.6,141.9 141.8,141.8 Z"
-            fill="currentColor"
-            className="octo-body"
-          />
-        </svg>
-      </a>
+      <App initLexicalData={initLexicalData} onChange={onChange} />
     </SettingsContext>
   );
 }

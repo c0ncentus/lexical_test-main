@@ -15,7 +15,7 @@ const DEFAULT_SETTINGS = {
   isMaxLength: false,
   isRichText: true,
   measureTypingPerf: false,
-  shouldUseLexicalContextMenu: false,
+  shouldUseLexicalContextMenu: true,
   showNestedEditorTreeView: false,
   showTableOfContents: false,
   showTreeView: true,
@@ -119,9 +119,7 @@ export const SettingsContext = ({
     }
   }, []);
 
-  const contextValue = useMemo(() => {
-    return {setOption, settings};
-  }, [setOption, settings]);
+  const contextValue = useMemo(() => {return {setOption, settings};}, [setOption, settings]);
 
   return <ContextSettings.Provider value={contextValue}>{children}</ContextSettings.Provider>;
 };
