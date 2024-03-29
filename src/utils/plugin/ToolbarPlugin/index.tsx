@@ -397,7 +397,7 @@ function FontDropDown({
       {(style === 'font-family' ? FONT_FAMILY_OPTIONS : FONT_SIZE_OPTIONS).map(
         ([option, text]) => (
           <DropDownItem
-            className={`item ${dropDownActiveClass(value === option)} ${
+            className={`item${`${dropDownActiveClass(value === option)===""?"":" active dropdown-item-active"}`} ${
               style === 'font-size' ? 'fontsize-item' : ''
             }`}
             onClick={() => handleClick(option)}
@@ -1036,17 +1036,7 @@ export default function ToolbarPlugin({
               <i className="icon image" />
               <span className="text">Inline Image</span>
             </DropDownItem>
-            <DropDownItem
-              onClick={() =>
-                insertGifOnClick({
-                  altText: 'Cat typing on a laptop',
-                  src: "",
-                })
-              }
-              className="item">
-              <i className="icon gif" />
-              <span className="text">GIF</span>
-            </DropDownItem>
+
             <DropDownItem
               onClick={() => {
                 activeEditor.dispatchCommand(

@@ -34,7 +34,6 @@ import CodeHighlightPlugin from './utils/plugin/CodeHighlightPlugin';
 import CollapsiblePlugin from './utils/plugin/CollapsiblePlugin';
 import CommentPlugin from './utils/plugin/CommentPlugin';
 import ContextMenuPlugin from './utils/plugin/ContextMenuPlugin';
-import DocsPlugin from './utils/plugin/DocsPlugin';
 import DragDropPaste from './utils/plugin/DragDropPastePlugin';
 import DraggableBlockPlugin from './utils/plugin/DraggableBlockPlugin';
 import EmojiPickerPlugin from './utils/plugin/EmojiPickerPlugin';
@@ -50,7 +49,6 @@ import { LayoutPlugin } from './utils/plugin/LayoutPlugin/LayoutPlugin';
 import ListMaxIndentLevelPlugin from './utils/plugin/ListMaxIndentLevelPlugin';
 import { MaxLengthPlugin } from './utils/plugin/MaxLengthPlugin';
 import PageBreakPlugin from './utils/plugin/PageBreakPlugin';
-import PasteLogPlugin from './utils/plugin/PasteLogPlugin';
 import PollPlugin from './utils/plugin/PollPlugin';
 import TabFocusPlugin from './utils/plugin/TabFocusPlugin';
 import TableOfContentsPlugin from './utils/plugin/TableOfContentsPlugin';
@@ -160,12 +158,12 @@ function Settings(): JSX.Element {
 export function Editor({ onChange_ }: { onChange_: (data: any) => void }): JSX.Element {
   const { historyState } = useSharedHistoryContext();
   const {
-    settings: { isRichText, showTreeView, tableCellMerge, tableCellBackgroundColor, showNestedEditorTreeView},
+    settings: { isRichText, showTreeView, tableCellMerge, tableCellBackgroundColor, showNestedEditorTreeView },
   } = useSettings();
   const isEditable = useLexicalEditable();
   const text = isRichText
-      ? 'Enter some rich text...'
-      : 'Enter some plain text...';
+    ? 'Enter some rich text...'
+    : 'Enter some plain text...';
   const placeholder = <Placeholder>{text}</Placeholder>;
   const [floatingAnchorElem, setFloatingAnchorElem] = useState<HTMLDivElement | null>(null);
   const [isSmallWidthViewport, setIsSmallWidthViewport] = useState<boolean>(false);
@@ -218,7 +216,7 @@ export function Editor({ onChange_ }: { onChange_: (data: any) => void }): JSX.E
             placeholder={placeholder}
             ErrorBoundary={LexicalErrorBoundary}
           />
-          <MarkdownShortcutPlugin /> <CodeHighlightPlugin /> <ListPlugin /> <CheckListPlugin /> 
+          <MarkdownShortcutPlugin /> <CodeHighlightPlugin /> <ListPlugin /> <CheckListPlugin />
           <ListMaxIndentLevelPlugin maxDepth={7} />
           <TablePlugin
             hasCellMerge={tableCellMerge}
@@ -228,7 +226,7 @@ export function Editor({ onChange_ }: { onChange_: (data: any) => void }): JSX.E
           <YouTubePlugin /> <FigmaPlugin />
           {!isEditable && <LexicalClickableLinkPlugin />} <HorizontalRulePlugin />
           <EquationsPlugin /> <ExcalidrawPlugin /> <TabFocusPlugin /> <TabIndentationPlugin /> <CollapsiblePlugin />
-           <PageBreakPlugin /><LayoutPlugin />
+          <PageBreakPlugin /><LayoutPlugin />
           {floatingAnchorElem && !isSmallWidthViewport && (
             <>
               <DraggableBlockPlugin anchorElem={floatingAnchorElem} />
@@ -244,7 +242,7 @@ export function Editor({ onChange_ }: { onChange_: (data: any) => void }): JSX.E
         </>
         <CharacterLimitPlugin charset={'UTF-16'} maxLength={CHAR_LIMIT} />
         <MaxLengthPlugin maxLength={CHAR_LIMIT} /> <AutocompletePlugin /> <TableOfContentsPlugin /> <ContextMenuPlugin />
-         <ActionsPlugin isRichText={isRichText} />
+        <ActionsPlugin isRichText={isRichText} />
       </div>
       <OnChangePlugin onChange={onChange} />
       {/* {showTreeView && <TreeViewPlugin />} */}
@@ -353,8 +351,6 @@ function App({ onChange, initLexicalData }: { onChange: (data: any) => void, ini
           <SharedAutocompleteContext>
             <div className="editor-shell"><Editor onChange_={onChange} /></div>
             <Settings />
-            <DocsPlugin />
-            <PasteLogPlugin />
           </SharedAutocompleteContext>
         </TableContext>
       </SharedHistoryContext>
@@ -363,9 +359,10 @@ function App({ onChange, initLexicalData }: { onChange: (data: any) => void, ini
 }
 
 export function PlaygroundApp({ initLexicalData, onChange }: { initLexicalData?: any, onChange: (data: any) => void }): JSX.Element {
-  return (
+  return (<div className='Playground_Cpnt'>
     <SettingsContext>
       <App initLexicalData={initLexicalData} onChange={onChange} />
     </SettingsContext>
+  </div>
   );
 }

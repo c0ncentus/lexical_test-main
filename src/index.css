@@ -1,11 +1,9 @@
-
-
 @import 'https://fonts.googleapis.com/css?family=Reenie+Beanie';
 
 
 
 
-body {
+.Playground_Cpnt{
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, '.SFNSText-Regular',
     sans-serif;
@@ -15,7 +13,7 @@ body {
   padding: 0 20px;
 }
 
-header {
+.Playground_Cpnt{
   max-width: 580px;
   margin: auto;
   position: relative;
@@ -89,6 +87,7 @@ header h1 {
   position: relative;
   resize: vertical;
   z-index: -1;
+  border: gray 2px solid;
 }
 
 .test-recorder-output {
@@ -160,7 +159,7 @@ pre::-webkit-scrollbar-thumb {
 }
 
 .editor-dev-button.active {
-  background-color: rgb(233, 35, 35);
+  background-color: #e92323;
 }
 
 .test-recorder-toolbar {
@@ -187,7 +186,7 @@ pre::-webkit-scrollbar-thumb {
   box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4);
 }
 
-.test-recorder-button + .test-recorder-button {
+.test-recorder-button+.test-recorder-button {
   margin-left: 4px;
 }
 
@@ -446,7 +445,7 @@ i.horizontal-rule {
   mask-size: contain;
 }
 
- i.image {
+i.image {
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-file-image"><path d="M8.002 5.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/><path d="M12 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zM3 2a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v8l-2.083-2.083a.5.5 0 0 0-.76.063L8 11 5.835 9.7a.5.5 0 0 0-.611.076L3 12V2z"/></svg>');
 }
 
@@ -569,11 +568,11 @@ i.prettier-error {
 i.page-break,
 .icon.page-break {
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-scissors" viewBox="0 0 16 16" transform="matrix(-1, 0, 0, 1, 0, 0)rotate(270)"><path d="M3.5 3.5c-.614-.884-.074-1.962.858-2.5L8 7.226 11.642 1c.932.538 1.472 1.616.858 2.5L8.81 8.61l1.556 2.661a2.5 2.5 0 1 1-.794.637L8 9.73l-1.572 2.177a2.5 2.5 0 1 1-.794-.637L7.19 8.61 3.5 3.5zm2.5 10a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0zm7 0a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0z"/></svg>');
-} 
+}
 
 .link-editor .button.active,
 .toolbar .button.active {
-  background-color: rgb(223, 232, 250);
+  background-color: #dfe8fa;
 }
 
 .link-editor .link-input {
@@ -585,7 +584,7 @@ i.page-break,
   border-radius: 15px;
   background-color: #eee;
   font-size: 15px;
-  color: rgb(5, 5, 5);
+  color: #050505;
   border: 0;
   outline: 0;
   position: relative;
@@ -599,7 +598,7 @@ i.page-break,
   padding: 8px 12px;
   border-radius: 15px;
   font-size: 15px;
-  color: rgb(5, 5, 5);
+  color: #050505;
   border: 0;
   outline: 0;
   position: relative;
@@ -671,7 +670,7 @@ i.page-break,
 }
 
 .link-editor .link-input a {
-  color: rgb(33, 111, 219);
+  color: #216fdb;
   text-decoration: underline;
   white-space: nowrap;
   overflow: hidden;
@@ -697,7 +696,7 @@ i.page-break,
 }
 
 .mention:focus {
-  box-shadow: rgb(180 213 255) 0px 0px 0px 2px;
+  box-shadow: #000 0px 0px 0px 2px;
   outline: none;
 }
 
@@ -719,14 +718,13 @@ i.page-break,
   z-index: 100;
   display: block;
   position: fixed;
-  box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
   border-radius: 8px;
   min-height: 40px;
   background-color: #fff;
 }
 
-.dropdown .item {
+.dropdown>.item {
   margin: 0 8px 0 8px;
   padding: 8px;
   color: #050505;
@@ -745,7 +743,7 @@ i.page-break,
   min-width: 100px;
 }
 
-.dropdown .item.fontsize-item,
+ .dropdown .item.fontsize-item,
 .dropdown .item.fontsize-item .text {
   min-width: unset;
 }
@@ -800,7 +798,7 @@ i.page-break,
     display: none !important;
   }
 
-  .dialog-dropdown > .dropdown-button-text {
+  .dialog-dropdown>.dropdown-button-text {
     display: flex !important;
   }
 
@@ -816,7 +814,6 @@ i.page-break,
 .icon.paragraph {
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-text-paragraph"><path fill-rule="evenodd" d="M2 12.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5zm0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm0-3a.5.5 0 0 1 .5-.5h11a.5.5 0 0 1 0 1h-11a.5.5 0 0 1-.5-.5zm4-3a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 0 1h-7a.5.5 0 0 1-.5-.5z"/></svg>');
 }
-
 
 .icon.h1 {
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-type-h1"><path d="M8.637 13V3.669H7.379V7.62H2.758V3.67H1.5V13h1.258V8.728h4.62V13h1.259zm5.329 0V3.669h-1.244L10.5 5.316v1.265l2.16-1.565h.062V13h1.244z"/></svg>');
@@ -912,7 +909,7 @@ i.page-break,
 }
 
 .switch button {
-  background-color: rgb(206, 208, 212);
+  background-color: #ced0d4;
   height: 24px;
   box-sizing: border-box;
   border-radius: 12px;
@@ -943,7 +940,7 @@ i.page-break,
 }
 
 .switch button[aria-checked='true'] {
-  background-color: rgb(24, 119, 242);
+  background-color: #1877f2;
 }
 
 .switch button[aria-checked='true'] span {
@@ -963,7 +960,7 @@ i.page-break,
 }
 
 .editor-shell .editor-image img.focused {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
   user-select: none;
 }
 
@@ -1043,7 +1040,7 @@ i.page-break,
   width: 7px;
   height: 7px;
   position: absolute;
-  background-color: rgb(60, 132, 244);
+  background-color: #3c84f4;
   border: 1px solid #fff;
 }
 
@@ -1108,7 +1105,7 @@ i.page-break,
 }
 
 .editor-shell .inline-editor-image img.focused {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
 }
 
 .editor-shell .inline-editor-image img.focused.draggable {
@@ -1170,7 +1167,7 @@ i.page-break,
 
 .emoji {
   color: transparent;
-  caret-color: rgb(5, 5, 5);
+  caret-color: #050505;
   background-size: 16px 16px;
   background-position: center;
   background-repeat: no-repeat;
@@ -1192,24 +1189,20 @@ i.page-break,
   background-color: rgba(150, 150, 150, 0.4);
 }
 
-.emoji.happysmile {
+/* .emoji.happysmile {
   background-image: url(images/emoji/1F642.png);
 }
-
 .emoji.veryhappysmile {
   background-image: url(images/emoji/1F600.png);
 }
-
 .emoji.unhappysmile {
   background-image: url(images/emoji/1F641.png);
 }
-
 .emoji.heart {
   background-image: url(images/emoji/2764.png);
-}
-
+} */
 .keyword {
-  color: rgb(241, 118, 94);
+  color: #f1765e;
   font-weight: bold;
 }
 
@@ -1437,9 +1430,7 @@ button.action-button:disabled {
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
   vertical-align: middle;
-  overflow: auto;
   height: 36px;
-  position: sticky;
   top: 0;
   z-index: 2;
 }
@@ -1577,7 +1568,7 @@ button.toolbar-item.active i {
   content: '';
   position: absolute;
   z-index: -1;
-  right: -0px;
+  right: 0px;
   bottom: 20px;
   width: 120px;
   height: 25px;
@@ -1588,24 +1579,12 @@ button.toolbar-item.active i {
 
 .sticky-note.yellow {
   border-top: 1px solid #fdfd86;
-  background: linear-gradient(
-    135deg,
-    #ffff88 81%,
-    #ffff88 82%,
-    #ffff88 82%,
-    #ffffc6 100%
-  );
+  background: linear-gradient(135deg, #ff8 81%, #ff8 82%, #ff8 82%, #ffffc6 100%);
 }
 
 .sticky-note.pink {
   border-top: 1px solid #e7d1e4;
-  background: linear-gradient(
-    135deg,
-    #f7cbe8 81%,
-    #f7cbe8 82%,
-    #f7cbe8 82%,
-    #e7bfe1 100%
-  );
+  background: linear-gradient(135deg, #f7cbe8 81%, #f7cbe8 82%, #f7cbe8 82%, #e7bfe1 100%);
 }
 
 .sticky-note-container.dragging {
@@ -1661,7 +1640,7 @@ button.toolbar-item.active i {
 }
 
 .excalidraw-button.selected {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
   user-select: none;
 }
 
@@ -1670,6 +1649,7 @@ button.toolbar-item.active i {
 }
 
 @keyframes octocat-wave {
+
   0%,
   100% {
     transform: rotate(0);
@@ -1706,7 +1686,7 @@ button.toolbar-item.active i {
 }
 
 .editor-equation.focused {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
 }
 
 button.item i {
@@ -1737,7 +1717,7 @@ hr:after {
 }
 
 hr.selected {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
   user-select: none;
 }
 
@@ -1795,7 +1775,7 @@ hr.selected {
   resize: none;
   cursor: text;
   font-size: 24px;
-  caret-color: rgb(5, 5, 5);
+  caret-color: #050505;
   display: block;
   position: relative;
   outline: 0;
@@ -1804,6 +1784,7 @@ hr.selected {
   white-space: pre-wrap;
   word-wrap: break-word;
 }
+
 .StickyNode__placeholder {
   font-size: 24px;
   color: #999;
@@ -1818,7 +1799,6 @@ hr.selected {
   display: inline-block;
   pointer-events: none;
 }
-
 
 .floating-text-format-popup {
   display: flex;
@@ -2010,7 +1990,7 @@ hr.selected {
   width: 16px;
   height: 16px;
   opacity: 0.3;
-   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" fill="currentColor"><path stroke="currentColor" d="M8.5 10a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm0 7a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm7-10a2 2 0 1 0-2-2 2 2 0 0 0 2 2Zm-7-4a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm7 14a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm0-7a2 2 0 1 0 2 2 2 2 0 0 0-2-2Z"/></svg>');
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" data-name="Layer 1" viewBox="0 0 24 24" fill="currentColor"><path stroke="currentColor" d="M8.5 10a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm0 7a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm7-10a2 2 0 1 0-2-2 2 2 0 0 0 2 2Zm-7-4a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm7 14a2 2 0 1 0 2 2 2 2 0 0 0-2-2Zm0-7a2 2 0 1 0 2 2 2 2 0 0 0-2-2Z"/></svg>');
 }
 
 .draggable-block-menu:active {
@@ -2031,9 +2011,6 @@ hr.selected {
   opacity: 0;
   will-change: transform;
 }
-
-
-
 
 .CommentPlugin_AddCommentBox {
   display: block;
@@ -2068,7 +2045,7 @@ i.add-comment {
   height: 20px;
   width: 20px;
   vertical-align: -10px;
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chat-left-text"><path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg>'); 
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chat-left-text"><path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg>');
 }
 
 @media (max-width: 1024px) {
@@ -2111,6 +2088,7 @@ i.add-comment {
     opacity: 0;
     transform: translateY(50px);
   }
+
   100% {
     opacity: 1;
     transform: translateY(0);
@@ -2129,13 +2107,13 @@ i.add-comment {
 }
 
 .CommentPlugin_CommentInputBox_Button.primary {
-  background-color: rgb(66, 135, 245);
+  background-color: #4287f5;
   font-weight: bold;
   color: #fff;
 }
 
 .CommentPlugin_CommentInputBox_Button.primary:hover {
-  background-color: rgb(53, 114, 211);
+  background-color: #3572d3;
 }
 
 .CommentPlugin_CommentInputBox_Button[disabled] {
@@ -2163,14 +2141,14 @@ i.add-comment {
   background-color: #fff;
   border-radius: 5px;
   font-size: 15px;
-  caret-color: rgb(5, 5, 5);
+  caret-color: #050505;
   display: block;
   padding: 9px 10px 10px 9px;
   min-height: 80px;
 }
 
 .CommentPlugin_CommentInputBox_Editor:focus {
-  outline: 1px solid rgb(66, 135, 245);
+  outline: 1px solid #4287f5;
 }
 
 .CommentPlugin_ShowCommentsButton {
@@ -2187,7 +2165,7 @@ i.comments {
   height: 20px;
   width: 20px;
   vertical-align: -10px;
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chat-left-text"><path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg>'); 
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-chat-left-text"><path d="M14 1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.414A2 2 0 0 0 3 11.586l-2 2V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12.793a.5.5 0 0 0 .854.353l2.853-2.853A1 1 0 0 1 4.414 12H14a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z"/><path d="M3 3.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5zM3 6a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9A.5.5 0 0 1 3 6zm0 2.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5z"/></svg>');
   opacity: 0.5;
   transition: opacity 0.2s linear;
 }
@@ -2212,7 +2190,7 @@ i.comments {
   width: 300px;
   height: calc(100% - 88px);
   top: 88px;
-  background-color: #ffffff;
+  background-color: #fff;
   border-top-left-radius: 10px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
   animation: show-comments 0.2s ease;
@@ -2224,6 +2202,7 @@ i.comments {
     opacity: 0;
     transform: translateX(300px);
   }
+
   100% {
     opacity: 1;
     transform: translateX(0);
@@ -2249,7 +2228,7 @@ i.comments {
   background-color: #fff;
   border-radius: 5px;
   font-size: 15px;
-  caret-color: rgb(5, 5, 5);
+  caret-color: #050505;
   display: block;
   padding: 9px 10px 10px 9px;
   min-height: 20px;
@@ -2286,8 +2265,7 @@ i.send {
 
 .CommentPlugin_CommentsPanel_SendButton:hover i.send {
   opacity: 1;
-  filter: invert(45%) sepia(98%) saturate(2299%) hue-rotate(201deg)
-    brightness(100%) contrast(92%);
+  filter: invert(45%) sepia(98%) saturate(2299%) hue-rotate(201deg) brightness(100%) contrast(92%);
 }
 
 .CommentPlugin_CommentsPanel_SendButton[disabled] i.send {
@@ -2330,8 +2308,7 @@ i.send {
   transition: all 0.2s linear;
 }
 
-.CommentPlugin_CommentsPanel_List_Thread.active
-  .CommentPlugin_CommentsPanel_List_Comment:hover {
+.CommentPlugin_CommentsPanel_List_Thread.active .CommentPlugin_CommentsPanel_List_Comment:hover {
   background-color: inherit;
 }
 
@@ -2366,8 +2343,7 @@ i.send {
 }
 
 .CommentPlugin_CommentsPanel_List_Thread:first-child,
-.CommentPlugin_CommentsPanel_List_Thread
-  + .CommentPlugin_CommentsPanel_List_Thread {
+.CommentPlugin_CommentsPanel_List_Thread+.CommentPlugin_CommentsPanel_List_Thread {
   border-top: none;
 }
 
@@ -2409,20 +2385,17 @@ i.send {
   list-style-type: none;
 }
 
-.CommentPlugin_CommentsPanel_List_Thread_Comments
-  .CommentPlugin_CommentsPanel_List_Comment:first-child {
+.CommentPlugin_CommentsPanel_List_Thread_Comments .CommentPlugin_CommentsPanel_List_Comment:first-child {
   border: none;
   margin-left: 0;
   padding-left: 5px;
 }
 
-.CommentPlugin_CommentsPanel_List_Thread_Comments
-  .CommentPlugin_CommentsPanel_List_Comment:first-child.CommentPlugin_CommentsPanel_List_Comment:last-child {
+.CommentPlugin_CommentsPanel_List_Thread_Comments .CommentPlugin_CommentsPanel_List_Comment:first-child.CommentPlugin_CommentsPanel_List_Comment:last-child {
   padding-bottom: 5px;
 }
 
-.CommentPlugin_CommentsPanel_List_Thread_Comments
-  .CommentPlugin_CommentsPanel_List_Comment {
+.CommentPlugin_CommentsPanel_List_Thread_Comments .CommentPlugin_CommentsPanel_List_Comment {
   padding-left: 10px;
   border-left: 5px solid #eee;
   margin-left: 5px;
@@ -2444,18 +2417,15 @@ i.send {
 }
 
 .CommentPlugin_CommentsPanel_DeletedComment,
-.CommentPlugin_CommentsPanel_List_Comment:hover
-  .CommentPlugin_CommentsPanel_List_DeleteButton,
-.CommentPlugin_CommentsPanel_List_Thread_QuoteBox:hover
-  .CommentPlugin_CommentsPanel_List_DeleteButton {
+.CommentPlugin_CommentsPanel_List_Comment:hover .CommentPlugin_CommentsPanel_List_DeleteButton,
+.CommentPlugin_CommentsPanel_List_Thread_QuoteBox:hover .CommentPlugin_CommentsPanel_List_DeleteButton {
   opacity: 0.5;
 }
 
 .CommentPlugin_CommentsPanel_List_DeleteButton:hover {
   background-color: transparent;
   opacity: 1;
-  filter: invert(45%) sepia(98%) saturate(2299%) hue-rotate(201deg)
-    brightness(100%) contrast(92%);
+  filter: invert(45%) sepia(98%) saturate(2299%) hue-rotate(201deg) brightness(100%) contrast(92%);
 }
 
 .CommentPlugin_CommentsPanel_List_DeleteButton i.delete {
@@ -2504,7 +2474,7 @@ i.send {
   transform: translateY(-50%);
 }
 
-.Collapsible__container[open] > .Collapsible__title:before {
+.Collapsible__container[open]>.Collapsible__title:before {
   border-color: transparent;
   border-width: 6px 4px 0 4px;
   border-top-color: #000;
@@ -2518,7 +2488,6 @@ i.send {
   display: none;
   user-select: none;
 }
-
 
 .code-action-menu-container .prettier-wrapper {
   position: relative;
@@ -2534,7 +2503,6 @@ i.send {
   top: 26px;
   right: 0;
 }
-
 
 .code-action-menu-container {
   height: 35.8px;
@@ -2579,11 +2547,11 @@ i.send {
 }
 
 .code-action-menu-container button.menu-item:active {
-  background-color: rgba(223, 232, 250);
+  background-color: rgba(223, 232, 250, );
   border: 1px solid rgba(0, 0, 0, 0.45);
 }
 
- .Button__root {
+.Button__root {
   padding-top: 10px;
   padding-bottom: 10px;
   padding-left: 15px;
@@ -2615,8 +2583,6 @@ i.send {
   background-color: #eee;
 }
 
-
-
 .color-picker-wrapper {
   padding: 20px;
 }
@@ -2647,8 +2613,7 @@ i.send {
   position: relative;
   margin-top: 15px;
   height: 150px;
-  background-image: linear-gradient(transparent, black),
-    linear-gradient(to right, white, transparent);
+  background-image: linear-gradient(transparent, black), linear-gradient(to right, white, transparent);
   user-select: none;
 }
 
@@ -2656,9 +2621,9 @@ i.send {
   position: absolute;
   width: 20px;
   height: 20px;
-  border: 2px solid #ffffff;
+  border: 2px solid #fff;
   border-radius: 50%;
-  box-shadow: 0 0 15px #00000026;
+  box-shadow: 0 0 15px #000 26;
   box-sizing: border-box;
   transform: translate(-10px, -10px);
 }
@@ -2668,14 +2633,7 @@ i.send {
   position: relative;
   margin-top: 15px;
   height: 12px;
-  background-image: linear-gradient(to right,
-      rgb(255, 0, 0),
-      rgb(255, 255, 0),
-      rgb(0, 255, 0),
-      rgb(0, 255, 255),
-      rgb(0, 0, 255),
-      rgb(255, 0, 255),
-      rgb(255, 0, 0));
+  background-image: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
   user-select: none;
   border-radius: 12px;
 }
@@ -2684,9 +2642,9 @@ i.send {
   position: absolute;
   width: 20px;
   height: 20px;
-  border: 2px solid #ffffff;
+  border: 2px solid #fff;
   border-radius: 50%;
-  box-shadow: #0003 0 0 0 0.5px;
+  box-shadow: #000 3 0 0 0 0.5px;
   box-sizing: border-box;
   transform: translate(-10px, -4px);
 }
@@ -2697,7 +2655,6 @@ i.send {
   width: 100%;
   height: 20px;
 }
-
 
 .ContentEditable__root {
   border: 0;
@@ -2715,7 +2672,6 @@ i.send {
     padding-right: 8px;
   }
 }
-
 
 .EquationEditor_inlineEditor {
   padding: 0;
@@ -2747,7 +2703,6 @@ i.send {
   color: #b0b0b0;
 }
 
-
 .DialogActions {
   display: flex;
   flex-direction: row;
@@ -2765,7 +2720,6 @@ i.send {
 .DialogButtonsList button {
   margin-bottom: 20px;
 }
-
 
 .Input__wrapper {
   display: flex;
@@ -2792,7 +2746,6 @@ i.send {
   border-radius: 5px;
   min-width: 0;
 }
-
 
 .KatexEquationAlterer_defaultRow {
   display: flex;
@@ -2907,7 +2860,6 @@ i.send {
   }
 }
 
-
 select {
   appearance: none;
   -webkit-appearance: none;
@@ -2920,7 +2872,6 @@ select {
   font-size: inherit;
   cursor: inherit;
   line-height: inherit;
-
   z-index: 1;
   outline: none;
 }
@@ -2940,16 +2891,13 @@ select {
   font-size: 1rem;
   cursor: pointer;
   line-height: 1.4;
-  background: linear-gradient(to bottom, #ffffff 0%, #e5e5e5 100%);
+  background: linear-gradient(to bottom, #fff 0%, #e5e5e5 100%);
 }
-
 
 .StickyEditorTheme__paragraph {
   margin: 0;
   position: 'relative';
 }
-
-
 
 .PlaygroundEditorTheme__ltr {
   text-align: left;
@@ -2969,8 +2917,8 @@ select {
   margin-left: 20px;
   margin-bottom: 10px;
   font-size: 15px;
-  color: rgb(101, 103, 107);
-  border-left-color: rgb(206, 208, 212);
+  color: #65676b;
+  border-left-color: #ced0d4;
   border-left-width: 4px;
   border-left-style: solid;
   padding-left: 16px;
@@ -2978,14 +2926,14 @@ select {
 
 .PlaygroundEditorTheme__h1 {
   font-size: 24px;
-  color: rgb(5, 5, 5);
+  color: #050505;
   font-weight: 400;
   margin: 0;
 }
 
 .PlaygroundEditorTheme__h2 {
   font-size: 15px;
-  color: rgb(101, 103, 107);
+  color: #65676b;
   font-weight: 700;
   margin: 0;
   text-transform: uppercase;
@@ -3032,7 +2980,7 @@ select {
 }
 
 .PlaygroundEditorTheme__textCode {
-  background-color: rgb(240, 242, 245);
+  background-color: #f0f2f5;
   padding: 1px 0.25rem;
   font-family: Menlo, Consolas, Monaco, monospace;
   font-size: 94%;
@@ -3044,7 +2992,7 @@ select {
 }
 
 .PlaygroundEditorTheme__link {
-  color: rgb(33, 111, 219);
+  color: #216fdb;
   text-decoration: none;
 }
 
@@ -3054,7 +3002,7 @@ select {
 }
 
 .PlaygroundEditorTheme__code {
-  background-color: rgb(240, 242, 245);
+  background-color: #f0f2f5;
   font-family: Menlo, Consolas, Monaco, monospace;
   display: block;
   padding: 8px 8px 8px 52px;
@@ -3097,7 +3045,7 @@ select {
 }
 
 .PlaygroundEditorTheme__tableSelected {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
 }
 
 .PlaygroundEditorTheme__tableCell {
@@ -3142,7 +3090,7 @@ select {
 }
 
 .PlaygroundEditorTheme__tableCellPrimarySelected {
-  border: 2px solid rgb(60, 132, 244);
+  border: 2px solid #3c84f4;
   display: block;
   height: calc(100% - 2px);
   position: absolute;
@@ -3170,7 +3118,8 @@ select {
 }
 
 .PlaygroundEditorTheme__tableAddColumns:after {
-  /* background-image: url(../images/icons/plus.svg); */
+  /* background-image: url(../images/icons/plus.svg);
+  */
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -3201,7 +3150,8 @@ select {
 }
 
 .PlaygroundEditorTheme__tableAddRows:after {
-  /* background-image: url(../images/icons/plus.svg); */
+  /* background-image: url(../images/icons/plus.svg);
+  */
   background-size: contain;
   background-position: center;
   background-repeat: no-repeat;
@@ -3233,7 +3183,7 @@ select {
   display: block;
   position: absolute;
   width: 1px;
-  background-color: rgb(60, 132, 244);
+  background-color: #3c84f4;
   height: 100%;
   top: 0;
 }
@@ -3265,7 +3215,7 @@ select {
 
 .PlaygroundEditorTheme__characterLimit {
   display: inline;
-  background-color: #ffbbbb !important;
+  background-color: #fbb !important;
 }
 
 .PlaygroundEditorTheme__ol1 {
@@ -3358,7 +3308,7 @@ select {
 }
 
 .PlaygroundEditorTheme__listItemChecked:before {
-  border: 1px solid rgb(61, 135, 245);
+  border: 1px solid #3d87f5;
   border-radius: 2px;
   background-color: #3d87f5;
   background-repeat: no-repeat;
@@ -3447,7 +3397,7 @@ select {
 }
 
 .PlaygroundEditorTheme__embedBlockFocus {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
 }
 
 .PlaygroundEditorTheme__layoutContainer {
@@ -3461,12 +3411,10 @@ select {
   padding: 8px 16px;
 }
 
-
 .CommentEditorTheme__paragraph {
   margin: 0;
   position: 'relative';
 }
-
 
 .font-size-input {
   font-weight: bold;
@@ -3492,7 +3440,8 @@ input[type='number'] {
 }
 
 .add-icon {
-  /* background-image: url(../../images/icons/add-sign.svg); */
+  /* background-image: url(../../images/icons/add-sign.svg);
+  */
   background-repeat: no-repeat;
   background-position: center;
 }
@@ -3512,7 +3461,6 @@ button.font-increment {
   padding: 0px;
   margin-left: 3px;
 }
-
 
 .table-of-contents .heading2 {
   margin-left: 10px;
@@ -3601,8 +3549,6 @@ button.font-increment {
   position: relative;
 }
 
-
-
 .PollNode__container {
   border: 1px solid #eee;
   background-color: #fcfcfc;
@@ -3612,13 +3558,16 @@ button.font-increment {
   cursor: pointer;
   user-select: none;
 }
+
 .PollNode__container.focused {
-  outline: 2px solid rgb(60, 132, 244);
+  outline: 2px solid #3c84f4;
 }
+
 .PollNode__inner {
   margin: 15px;
   cursor: default;
 }
+
 .PollNode__heading {
   margin-left: 0px;
   margin-top: 0px;
@@ -3628,38 +3577,43 @@ button.font-increment {
   text-align: center;
   font-size: 18px;
 }
+
 .PollNode__optionContainer {
   display: flex;
   flex-direction: row;
   margin-bottom: 10px;
   align-items: center;
 }
+
 .PollNode__optionInputWrapper {
   display: flex;
   flex: 10px;
-  border: 1px solid rgb(61, 135, 245);
+  border: 1px solid #3d87f5;
   border-radius: 5px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
 }
+
 .PollNode__optionInput {
   display: flex;
   flex: 1px;
   border: 0px;
   padding: 7px;
-  color: rgb(61, 135, 245);
+  color: #3d87f5;
   background-color: transparent;
   font-weight: bold;
   outline: 0px;
   z-index: 0;
 }
+
 .PollNode__optionInput::placeholder {
   font-weight: normal;
   color: #999;
 }
+
 .PollNode__optionInputVotes {
-  background-color: rgb(236, 243, 254);
+  background-color: #ecf3fe;
   height: 100%;
   position: absolute;
   top: 0px;
@@ -3667,13 +3621,15 @@ button.font-increment {
   transition: width 1s ease;
   z-index: 0;
 }
+
 .PollNode__optionInputVotesCount {
-  color: rgb(61, 135, 245);
+  color: #3d87f5;
   position: absolute;
   right: 15px;
   font-size: 12px;
   top: 5px;
 }
+
 .PollNode__optionCheckboxWrapper {
   position: relative;
   display: flex;
@@ -3683,10 +3639,12 @@ button.font-increment {
   margin-right: 10px;
   border-radius: 5px;
 }
+
 .PollNode__optionCheckboxChecked {
-  border: 1px solid rgb(61, 135, 245);
-  background-color: rgb(61, 135, 245);
+  border: 1px solid #3d87f5;
+  background-color: #3d87f5;
 }
+
 .PollNode__optionCheckboxChecked:after {
   content: '';
   cursor: pointer;
@@ -3702,6 +3660,7 @@ button.font-increment {
   transform: rotate(45deg);
   border-width: 0 2px 2px 0;
 }
+
 .PollNode__optionCheckbox {
   border: 0px;
   position: absolute;
@@ -3711,6 +3670,7 @@ button.font-increment {
   opacity: 0;
   cursor: pointer;
 }
+
 .PollNode__optionDelete {
   position: relative;
   display: flex;
@@ -3726,6 +3686,7 @@ button.font-increment {
   border-radius: 5px;
   opacity: 0.3;
 }
+
 .PollNode__optionDelete:before,
 .PollNode__optionDelete:after {
   position: absolute;
@@ -3737,37 +3698,40 @@ button.font-increment {
   top: 6px;
   left: 13px;
 }
+
 .PollNode__optionDelete:before {
   transform: rotate(-45deg);
 }
+
 .PollNode__optionDelete:after {
   transform: rotate(45deg);
 }
+
 .PollNode__optionDelete:hover {
   opacity: 1;
   background-color: #eee;
 }
+
 .PollNode__optionDeleteDisabled {
   cursor: not-allowed;
 }
+
 .PollNode__optionDeleteDisabled:hover {
   opacity: 0.3;
   background-color: transparent;
 }
+
 .PollNode__footer {
   display: flex;
   justify-content: center;
 }
-
-
-
 
 .InlineImageNode__contentEditable {
   min-height: 20px;
   border: 0px;
   resize: none;
   cursor: text;
-  caret-color: rgb(5, 5, 5);
+  caret-color: #050505;
   display: block;
   position: relative;
   tab-size: 1;
@@ -3801,8 +3765,8 @@ button.font-increment {
   left: -9999px;
 }
 
-.InlineImageNode_Checkbox:checked + label,
-.InlineImageNode_Checkbox:not(:checked) + label {
+.InlineImageNode_Checkbox:checked+label,
+.InlineImageNode_Checkbox:not(:checked)+label {
   position: absolute;
   padding-right: 55px;
   cursor: pointer;
@@ -3811,8 +3775,8 @@ button.font-increment {
   color: #666;
 }
 
-.InlineImageNode_Checkbox:checked + label:before,
-.InlineImageNode_Checkbox:not(:checked) + label:before {
+.InlineImageNode_Checkbox:checked+label:before,
+.InlineImageNode_Checkbox:not(:checked)+label:before {
   content: '';
   position: absolute;
   right: 0;
@@ -3823,12 +3787,12 @@ button.font-increment {
   background: #fff;
 }
 
-.InlineImageNode_Checkbox:checked + label:after,
-.InlineImageNode_Checkbox:not(:checked) + label:after {
+.InlineImageNode_Checkbox:checked+label:after,
+.InlineImageNode_Checkbox:not(:checked)+label:after {
   content: '';
   width: 8px;
   height: 8px;
-  background: #222222;
+  background: #222;
   position: absolute;
   top: 6px;
   right: 6px;
@@ -3836,13 +3800,13 @@ button.font-increment {
   transition: all 0.2s ease;
 }
 
-.InlineImageNode_Checkbox:not(:checked) + label:after {
+.InlineImageNode_Checkbox:not(:checked)+label:after {
   opacity: 0;
   -webkit-transform: scale(0);
   transform: scale(0);
 }
 
-.InlineImageNode_Checkbox:checked + label:after {
+.InlineImageNode_Checkbox:checked+label:after {
   opacity: 1;
   -webkit-transform: scale(1);
   transform: scale(1);
@@ -3853,7 +3817,7 @@ button.font-increment {
   border: 0px;
   resize: none;
   cursor: text;
-  caret-color: rgb(5, 5, 5);
+  caret-color: #050505;
   display: block;
   position: relative;
   outline: 0px;
@@ -3883,7 +3847,6 @@ button.font-increment {
   touch-action: none;
 }
 
-
 [type='page-break'] {
   position: relative;
   display: block;
@@ -3892,22 +3855,19 @@ button.font-increment {
   margin-left: calc(var(--editor-input-padding, 28px) * -1);
   margin-top: var(--editor-input-padding, 28px);
   margin-bottom: var(--editor-input-padding, 28px);
-
   border: none;
-  border-top: 1px dashed var(--editor-color-secondary, #eeeeee);
-  border-bottom: 1px dashed var(--editor-color-secondary, #eeeeee);
-  background-color: var(--editor-color-secondary, #eeeeee);
+  border-top: 1px dashed var(--editor-color-secondary, #eee);
+  border-bottom: 1px dashed var(--editor-color-secondary, #eee);
+  background-color: var(--editor-color-secondary, #eee);
 }
 
 [type='page-break']::before {
   content: '';
-
   position: absolute;
   top: 50%;
   left: calc(var(--editor-input-padding, 28px) + 12px);
   transform: translateY(-50%);
   opacity: 0.5;
-
   background-size: cover;
   background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-scissors" viewBox="0 0 16 16" transform="matrix(-1, 0, 0, 1, 0, 0)rotate(270)"><path d="M3.5 3.5c-.614-.884-.074-1.962.858-2.5L8 7.226 11.642 1c.932.538 1.472 1.616.858 2.5L8.81 8.61l1.556 2.661a2.5 2.5 0 1 1-.794.637L8 9.73l-1.572 2.177a2.5 2.5 0 1 1-.794-.637L7.19 8.61 3.5 3.5zm2.5 10a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0zm7 0a1.5 1.5 0 1 0-3 0 1.5 1.5 0 0 0 3 0z"/></svg>');
   width: 16px;
@@ -3919,12 +3879,10 @@ button.font-increment {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-
   display: block;
   padding: 2px 6px;
   border: 1px solid #ccc;
   background-color: #fff;
-
   content: 'PAGE BREAK';
   font-size: 12px;
   color: #000;
@@ -3938,9 +3896,6 @@ button.font-increment {
 .selected[type='page-break']::before {
   opacity: 1;
 }
-
-
-
 
 .ExcalidrawModal__overlay {
   display: flex;
@@ -3956,6 +3911,7 @@ button.font-increment {
   z-index: 100;
   background-color: rgba(40, 40, 40, 0.6);
 }
+
 .ExcalidrawModal__actions {
   text-align: end;
   position: absolute;
@@ -3963,22 +3919,25 @@ button.font-increment {
   top: 5px;
   z-index: 1;
 }
+
 .ExcalidrawModal__actions button {
   background-color: #fff;
   border-radius: 5px;
 }
+
 .ExcalidrawModal__row {
   position: relative;
   padding: 40px 5px 5px;
   width: 70vw;
   height: 70vh;
   border-radius: 8px;
-  box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  box-shadow: 0 12px 28px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
 }
-.ExcalidrawModal__row > div {
+
+.ExcalidrawModal__row>div {
   border-radius: 5px;
 }
+
 .ExcalidrawModal__modal {
   position: relative;
   z-index: 10;
@@ -3991,6 +3950,7 @@ button.font-increment {
   border-radius: 8px;
   background-color: #eee;
 }
+
 .ExcalidrawModal__discardModal {
   margin-top: 60px;
   text-align: center;
