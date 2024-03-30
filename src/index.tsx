@@ -6,8 +6,6 @@ import React from 'react';
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-
       <PlaygroundApp onChange={(data) => { console.log(data) }} initLexicalData={undefined} />
-
   </React.StrictMode>,
 );
